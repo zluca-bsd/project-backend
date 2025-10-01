@@ -18,7 +18,7 @@ app.UseHttpsRedirection();
 
 app.MapGet("/greetings", () =>
 {
-    var data = new { Message = "hello world" };
+    var data = new { Message = "hello world from ASP.NET Core" };
     return data;
 });
 
