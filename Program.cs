@@ -3,8 +3,8 @@ using Microsoft.Extensions.Options;
 using project_backend;
 
 var builder = WebApplication.CreateBuilder(args);
-
 builder.Services.AddControllers();
+
 // Register the AppDbContext with SQLite
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -22,9 +22,9 @@ using (var scope = app.Services.CreateScope())
     // Creates DB if not exists
     context.Database.EnsureCreated();
 
-    context.Products.Add(new Product("Mouse", 30f, "computer-accessory"));
-    context.Products.Add(new Product("Keyboard", 50f, "computer-accessory"));
-    context.Products.Add(new Product("Monitor", 150f, "computer-accessory"));
+    // context.Products.Add(new Product("Mouse", 30f, "computer-accessory"));
+    // context.Products.Add(new Product("Keyboard", 50f, "computer-accessory"));
+    // context.Products.Add(new Product("Monitor", 150f, "computer-accessory"));
 
     context.SaveChanges();
 }

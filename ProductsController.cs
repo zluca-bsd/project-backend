@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace project_backend
 {
     [ApiController]
-    [Route("api/Products")]
-    public class ProductController : ControllerBase
+    [Route("api/[controller]")]
+    public class ProductsController : ControllerBase
     {
         private readonly AppDbContext _context;
 
-        public ProductController(AppDbContext context)
+        public ProductsController(AppDbContext context)
         {
             _context = context;
         }
