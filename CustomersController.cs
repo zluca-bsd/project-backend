@@ -33,18 +33,17 @@ namespace project_backend
             return Ok(customer);
         }
 
-        // [HttpPost]
-        // public IActionResult CreateCustomer(Customer customer)
-        // {
-        //     if (!ModelState.IsValid)
-        //     {
-        //         return BadRequest(ModelState);
-        //     }
+        [HttpPost]
+        public IActionResult CreateCustomer([FromBody] Customer customer)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //     _context.Customers.Add(customer);
-        //     _context.SaveChanges();
-        //     return CreatedAtAction(nameof())
-        // }
-
+            _context.Customers.Add(customer);
+            _context.SaveChanges();
+            return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+        }
     }
 }
