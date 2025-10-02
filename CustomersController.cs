@@ -45,5 +45,20 @@ namespace project_backend
             _context.SaveChanges();
             return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
         }
+
+        [HttpDelete("{Id}")]
+        public IActionResult DeleteCustomer(Guid Id)
+        {
+            var customer = _context.Customers.Find(Id);
+
+            if (customer == null)
+            {
+                return NotFound();
+            }
+
+            _context.Customers.Remove(customer);
+            _context.SaveChanges();
+            return NoContent();
+        }
     }
 }
