@@ -11,17 +11,22 @@ namespace project_backend
     [Route("api/Products")]
     public class ProductController : ControllerBase
     {
+        private readonly AppDbContext _context;
+
+        public ProductController(AppDbContext context)
+        {
+            _context = context;
+        }
+
         [HttpGet]
         public IActionResult GetProduct()
         {
-            List<Product> products = new List<Product>();
-            products.Add(new Product("mouse", 30f, "computer accessory"));
-            products.Add(new Product("keyboard", 40f, "computer accessory"));
-            products.Add(new Product("monitor", 150f, "computer accessory"));
-            
-            string response = JsonSerializer.Serialize(products, new JsonSerializerOptions { WriteIndented = true });
-            return Ok(response);
-        }
+            // products.Add(new Product("mouse", 30f, "computer accessory"));
+            // products.Add(new Product("keyboard", 40f, "computer accessory"));
+            // products.Add(new Product("monitor", 150f, "computer accessory"));
 
+            var products = _context.Products.ToList();
+            return Ok(products);
+        }
     }
 }
