@@ -19,7 +19,7 @@ namespace project_backend
         }
 
         [HttpGet]
-        public IActionResult GetCustomer()
+        public IActionResult GetAllCustomers()
         {
             var customers = _context.Customers.ToList();
             return Ok(customers);

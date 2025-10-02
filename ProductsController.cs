@@ -19,7 +19,7 @@ namespace project_backend
         }
 
         [HttpGet]
-        public IActionResult GetProduct()
+        public IActionResult GetAllProducts()
         {
             // products.Add(new Product("mouse", 30f, "computer accessory"));
             // products.Add(new Product("keyboard", 40f, "computer accessory"));
