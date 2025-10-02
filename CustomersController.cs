@@ -60,5 +60,38 @@ namespace project_backend
             _context.SaveChanges();
             return NoContent();
         }
+
+        [HttpPut("{Id}")]
+        public IActionResult PutCustomer(Guid Id, [FromBody] Customer customer)
+        {
+            // Ensure the route ID and body ID match
+            if (Id != customer.Id)
+            {
+                return BadRequest("The ID in the URL does not match the ID in the request body.");
+            }
+
+            // Check if the customers exists
+            var existingCustomer = _context.Customers.Find(Id);
+            if (existingCustomer == null)
+            {
+                return NotFound("Customer not found");
+            }
+
+            existingCustomer.Name = customer.Name;
+            existingCustomer.Email = customer.Email;
+            existingCustomer.DateOfBirth = customer.DateOfBirth;
+
+            try
+            {
+                _context.Customers.Update(existingCustomer);
+                _context.SaveChanges();
+            }
+            catch (Exception e)
+            {
+                return StatusCode(500, $"Internal server error: {e.Message}");
+            }
+
+            return Ok(existingCustomer);
+        }
     }
 }
