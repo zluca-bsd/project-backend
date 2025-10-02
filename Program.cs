@@ -26,6 +26,12 @@ using (var scope = app.Services.CreateScope())
     // context.Products.Add(new Product("Keyboard", 50f, "computer-accessory"));
     // context.Products.Add(new Product("Monitor", 150f, "computer-accessory"));
 
+    // Product product1 = new Product("Headphones", 10f, "computer-accessory");
+    // Customer customer1 = new Customer("Maxim", "maxim@mail.com", "10/10/2000");
+
+    // context.Products.Add(product1);
+    // context.Orders.Add(new Order(customer1.Id, product1.Id));
+    
     context.SaveChanges();
 }
 
