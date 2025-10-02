@@ -28,32 +28,22 @@ namespace project_backend
         [HttpGet("{Id}")]
         public ActionResult<Product> GetCustomer(Guid Id)
         {
-            Customer? customer = null;
-
-            foreach (var item in _context.Customers.ToList())
-            {
-                if (item.Id == Id)
-                {
-                    customer = item;
-                    break;
-                }
-            }
-
-            if (customer == null)
-            {
-                return NotFound();
-            }
-
+            var customer = _context.Customers.Find(Id);
+            if (customer == null) return NotFound();
             return Ok(customer);
         }
 
         // [HttpPost]
-        // public IActionResult CreateCustomer([FromBody] Customer customer)
+        // public IActionResult CreateCustomer(Customer customer)
         // {
         //     if (!ModelState.IsValid)
         //     {
         //         return BadRequest(ModelState);
         //     }
+
+        //     _context.Customers.Add(customer);
+        //     _context.SaveChanges();
+        //     return CreatedAtAction(nameof())
         // }
 
     }
