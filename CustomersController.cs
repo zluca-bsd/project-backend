@@ -11,11 +11,11 @@ namespace project_backend
     [Route("api/[controller]")]
     public class CustomersController : ControllerBase
     {
-        private readonly AppDbContext _context; 
+        private readonly AppDbContext _context;
 
         public CustomersController(AppDbContext context)
         {
-            _context = context;            
+            _context = context;
         }
 
         [HttpGet]
@@ -24,5 +24,37 @@ namespace project_backend
             var customers = _context.Customers.ToList();
             return Ok(customers);
         }
+
+        [HttpGet("{Id}")]
+        public ActionResult<Product> GetCustomer(Guid Id)
+        {
+            Customer? customer = null;
+
+            foreach (var item in _context.Customers.ToList())
+            {
+                if (item.Id == Id)
+                {
+                    customer = item;
+                    break;
+                }
+            }
+
+            if (customer == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(customer);
+        }
+
+        // [HttpPost]
+        // public IActionResult CreateCustomer([FromBody] Customer customer)
+        // {
+        //     if (!ModelState.IsValid)
+        //     {
+        //         return BadRequest(ModelState);
+        //     }
+        // }
+
     }
 }
