@@ -1,19 +1,18 @@
 namespace project_backend.Models
 {
-    public class Customer
+    public class Register
     {
-        public Guid Id { get; set; }
         public string Name { get; set; }
         public string Email { get; set; }
         public string DateOfBirth { get; set; }
         public string Password { get; set; }
-        public Customer(string name, string email, string dateOfBirth, string password)
+
+        public Register(string name, string email, string dateOfBirth, string password)
         {
-            Id = Guid.NewGuid();
             Name = name;
             Email = email;
             DateOfBirth = dateOfBirth;
-            Password = BCrypt.Net.BCrypt.HashPassword(password);
+            Password = password;
         }
     }
 }

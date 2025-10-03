@@ -17,7 +17,8 @@ namespace project_backend.Controllers
         }
 
         // GET: api/customers
-        [HttpGet, Authorize]
+        // [HttpGet, Authorize]
+        [HttpGet]
         public IActionResult GetAllCustomers()
         {
             var customers = _context.Customers.ToList();
@@ -33,23 +34,24 @@ namespace project_backend.Controllers
             return Ok(customer);
         }
 
-        // POST: api/customers
-        [HttpPost]
-        public ActionResult<Customer> CreateCustomer([FromBody] Customer customer)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        // // POST: api/customers
+        // Disabled: use /register from RegisterController.cs instead
+        // [HttpPost]
+        // public ActionResult<Customer> CreateCustomer([FromBody] Customer customer)
+        // {
+        //     if (!ModelState.IsValid)
+        //     {
+        //         return BadRequest(ModelState);
+        //     }
 
-            // Ensure ID is generated server-side
-            customer.Id = Guid.NewGuid();
+        //     // Ensure ID is generated server-side
+        //     customer.Id = Guid.NewGuid();
 
-            _context.Customers.Add(customer);
-            _context.SaveChanges();
+        //     _context.Customers.Add(customer);
+        //     _context.SaveChanges();
 
-            return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
-        }
+        //     return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
+        // }
 
         // DELETE: api/customers/{id}
         [HttpDelete("{id:guid}")]
