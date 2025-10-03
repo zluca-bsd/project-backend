@@ -1,5 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
+﻿using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using project_backend;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,11 +11,42 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Register JwtSettings for DI injection
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
+// Then do manual check
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+if (string.IsNullOrWhiteSpace(jwtSettings?.Secret) ||
+    string.IsNullOrWhiteSpace(jwtSettings?.Issuer) ||
+    string.IsNullOrWhiteSpace(jwtSettings?.Audience))
+{
+    throw new InvalidOperationException("JWT configuration is invalid.");
+}
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
-// app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseRouting();
 app.MapControllers();
+app.UseAuthentication();
+app.UseAuthorization();
 
 using (var scope = app.Services.CreateScope())
 {
@@ -21,27 +54,7 @@ using (var scope = app.Services.CreateScope())
 
     // Creates DB if not exists
     context.Database.EnsureCreated();
-
-    // context.Products.Add(new Product("Mouse", 30f, "computer-accessory"));
-    // context.Products.Add(new Product("Keyboard", 50f, "computer-accessory"));
-    // context.Products.Add(new Product("Monitor", 150f, "computer-accessory"));
-
-    // Product product1 = new Product("Headphones", 10f, "computer-accessory");
-    // Customer customer1 = new Customer("Maxim", "maxim@mail.com", "10/10/2000");
-
-    // context.Products.Add(product1);
-    // context.Orders.Add(new Order(customer1.Id, product1.Id));
-    
     context.SaveChanges();
 }
 
-
 app.Run();
-
-// using var context = new AppDbContext();
-
-// context.Customers.Add(new Customer("Alessandro", "alessandro123@mail.com", "10/10/2000"));
-
-// context.SaveChanges();
-
-

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
@@ -16,7 +17,7 @@ namespace project_backend.Controllers
         }
 
         // GET: api/customers
-        [HttpGet]
+        [HttpGet, Authorize]
         public IActionResult GetAllCustomers()
         {
             var customers = _context.Customers.ToList();
