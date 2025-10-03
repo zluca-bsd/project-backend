@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-namespace project_backend
+namespace project_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
@@ -18,6 +14,7 @@ namespace project_backend
             _context = context;
         }
 
+        // GET: api/customers
         [HttpGet]
         public IActionResult GetAllCustomers()
         {
@@ -25,49 +22,58 @@ namespace project_backend
             return Ok(customers);
         }
 
-        [HttpGet("{Id}")]
-        public ActionResult<Customer> GetCustomer(Guid Id)
+        // GET: api/customers/{id}
+        [HttpGet("{id:guid}")]
+        public ActionResult<Customer> GetCustomer(Guid id)
         {
-            var customer = _context.Customers.Find(Id);
-            if (customer == null) return NotFound();
+            var customer = _context.Customers.Find(id);
+            if (customer == null) return NotFound("Customer not found");
             return Ok(customer);
         }
 
+        // POST: api/customers
         [HttpPost]
-        public IActionResult CreateCustomer([FromBody] Customer customer)
+        public ActionResult<Customer> CreateCustomer([FromBody] Customer customer)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
 
+            // Ensure ID is generated server-side
+            customer.Id = Guid.NewGuid();
+
             _context.Customers.Add(customer);
             _context.SaveChanges();
+
             return CreatedAtAction(nameof(GetCustomer), new { id = customer.Id }, customer);
         }
 
-        [HttpDelete("{Id}")]
-        public IActionResult DeleteCustomer(Guid Id)
+        // DELETE: api/customers/{id}
+        [HttpDelete("{id:guid}")]
+        public IActionResult DeleteCustomer(Guid id)
         {
-            var customer = _context.Customers.Find(Id);
+            var customer = _context.Customers.Find(id);
 
             if (customer == null)
             {
-                return NotFound();
+                return NotFound("Customer not found");
             }
 
             _context.Customers.Remove(customer);
             _context.SaveChanges();
+
             return NoContent();
         }
 
-        [HttpPut("{Id}")]
-        public IActionResult PutCustomer(Guid Id, [FromBody] Customer customer)
+        // PUT: api/customers/{id}
+        [HttpPut("{id:guid}")]
+        public IActionResult UpdateCustomer(Guid Id, [FromBody] Customer customer)
         {
             // Ensure the route ID and body ID match
             if (Id != customer.Id)
             {
-                return BadRequest("The ID in the URL does not match the ID in the request body.");
+                return BadRequest("The ID in the URL does not match the customer ID.");
             }
 
             // Check if the customers exists
@@ -86,9 +92,9 @@ namespace project_backend
                 _context.Customers.Update(existingCustomer);
                 _context.SaveChanges();
             }
-            catch (Exception e)
+            catch (DbUpdateException e)
             {
-                return StatusCode(500, $"Internal server error: {e.Message}");
+                return StatusCode(500, $"An error occurred while updating the customer: {e.Message}");
             }
 
             return Ok(existingCustomer);
