@@ -26,7 +26,7 @@ namespace project_backend
         }
 
         [HttpGet("{Id}")]
-        public ActionResult<Product> GetCustomer(Guid Id)
+        public ActionResult<Customer> GetCustomer(Guid Id)
         {
             var customer = _context.Customers.Find(Id);
             if (customer == null) return NotFound();
