@@ -1,4 +1,4 @@
-namespace project_backend
+namespace project_backend.Models
 {
     public class Book
     {
