@@ -58,6 +58,8 @@ nunit-*.xml
 
 # database
 *.db
+*.db-shm
+*.db-wal
 
 # Ignore appsettings.json with sensitive info
 appsettings.json
