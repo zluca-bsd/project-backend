@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using project_backend.Models;
 
 namespace project_backend.Controllers
@@ -105,6 +106,26 @@ namespace project_backend.Controllers
             }
 
             return Ok(existingBook);
+        }
+
+        // GET: api/books/search?title=
+        [HttpGet("search"), Authorize]
+        public ActionResult<Book> GetBookByTitle([FromQuery] string title)
+        {
+            if (string.IsNullOrEmpty(title))
+            {
+                return BadRequest("Query parameter cannot be empty");
+            }
+
+            var books = _context.Books.Where(b => EF.Functions.Like(b.Name, $"%{title}%")).ToList();
+
+
+            if (!books.Any())
+            {
+                return NotFound("No books found with the given title.");
+            }
+            
+            return Ok(books);
         }
     }
 }
