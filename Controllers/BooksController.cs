@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using project_backend.Models;
 
 namespace project_backend.Controllers
@@ -91,7 +90,8 @@ namespace project_backend.Controllers
             }
 
             // Update fields
-            existingBook.Name = book.Name;
+            existingBook.Title = book.Title;
+            existingBook.Author = book.Author;
             existingBook.Price = book.Price;
             existingBook.Category = book.Category;
 
@@ -110,15 +110,14 @@ namespace project_backend.Controllers
 
         // GET: api/books/search?title=
         [HttpGet("search"), Authorize]
-        public ActionResult<Book> GetBookByTitle([FromQuery] string title)
+        public ActionResult<Book> SearchBookByTitle([FromQuery] string title)
         {
             if (string.IsNullOrEmpty(title))
             {
                 return BadRequest("Query parameter cannot be empty");
             }
 
-            var books = _context.Books.Where(b => EF.Functions.Like(b.Name, $"%{title}%")).ToList();
-
+            var books = _context.Books.Where(b => EF.Functions.Like(b.Title, $"%{title}%")).ToList();
 
             if (!books.Any())
             {
@@ -127,5 +126,25 @@ namespace project_backend.Controllers
             
             return Ok(books);
         }
+
+        // // GET: api/books/search?author=
+        // [HttpGet("search"), Authorize]
+        // public ActionResult<Book> SearchBookByAuthor([FromQuery] string author)
+        // {
+        //     if (string.IsNullOrEmpty(author))
+        //     {
+        //         return BadRequest("Query parameter cannot be empty");
+        //     }
+
+        //     var books = _context.Books.Where(b => EF.Functions.Like(b.Title, $"%{author}%")).ToList();
+
+
+        //     if (!books.Any())
+        //     {
+        //         return NotFound("No books found with the given author.");
+        //     }
+            
+        //     return Ok(books);
+        // }
     }
 }
