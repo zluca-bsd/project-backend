@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
@@ -16,7 +17,8 @@ namespace project_backend.Controllers
         }
 
         // GET: api/books
-        [HttpGet]
+        // Authenticated users only
+        [HttpGet, Authorize]
         public IActionResult GetAllBooks()
         {
             var books = _context.Books.ToList();
@@ -24,7 +26,7 @@ namespace project_backend.Controllers
         }
 
         // GET: api/books/{id}
-        [HttpGet("{id:guid}")]
+        [HttpGet("{id:guid}"), Authorize]
         public ActionResult<Book> GetBook(Guid id)
         {
             var book = _context.Books.Find(id);
@@ -37,7 +39,7 @@ namespace project_backend.Controllers
         }
 
         // POST: api/books
-        [HttpPost]
+        [HttpPost, Authorize]
         public ActionResult<Book> CreateBook([FromBody] Book book)
         {
             if (!ModelState.IsValid)
@@ -55,7 +57,7 @@ namespace project_backend.Controllers
         }
 
         // DELETE: api/books/{id}
-        [HttpDelete("{id:guid}")]
+        [HttpDelete("{id:guid}"), Authorize]
         public IActionResult DeleteBook(Guid id)
         {
             var book = _context.Books.Find(id);
@@ -71,7 +73,7 @@ namespace project_backend.Controllers
         }
 
         // PUT: api/books/{id}
-        [HttpPut("{id:guid}")]
+        [HttpPut("{id:guid}"), Authorize]
         public IActionResult UpdateBook(Guid id, [FromBody] Book book)
         {
             // Ensure the route ID and body ID match

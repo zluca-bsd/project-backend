@@ -30,11 +30,13 @@ namespace project_backend.Controllers
                 return BadRequest("User is already registered.");
             }
 
-            var newCustomer = new Customer(register.Name, register.Email, register.DateOfBirth, register.Password);
+            var newCustomer = new Customer(register.Name, register.Email, register.DateOfBirth, register.Password, false);
 
             _context.Customers.Add(newCustomer);
             _context.SaveChanges();
-            
+
+            Console.WriteLine(newCustomer.Password);
+
             return Ok("Registration successful.");
         }
 
