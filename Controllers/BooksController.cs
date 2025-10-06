@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
+using System.Linq;
 
 namespace project_backend.Controllers
 {
@@ -108,43 +109,34 @@ namespace project_backend.Controllers
             return Ok(existingBook);
         }
 
-        // GET: api/books/search?title=
+        // GET: api/books/search?title=Title&author=Author
         [HttpGet("search"), Authorize]
-        public ActionResult<Book> SearchBookByTitle([FromQuery] string title)
+        public ActionResult<Book> SearchBookByTitle([FromQuery] BookSearch searchCriteria)
         {
-            if (string.IsNullOrEmpty(title))
+            var filteredBooks = _context.Books.AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchCriteria.Title))
             {
-                return BadRequest("Query parameter cannot be empty");
+                filteredBooks = filteredBooks.Where(b =>
+                    EF.Functions.Like(b.Title, $"%{searchCriteria.Title}%")
+                );
             }
 
-            var books = _context.Books.Where(b => EF.Functions.Like(b.Title, $"%{title}%")).ToList();
+            if (!string.IsNullOrEmpty(searchCriteria.Author))
+            {
+                filteredBooks = filteredBooks.Where(b =>
+                    EF.Functions.Like(b.Author, $"%{searchCriteria.Author}%")
+                );
+            }
 
-            if (!books.Any())
+            var result = filteredBooks.ToList();
+
+            if (!result.Any())
             {
                 return NotFound("No books found with the given title.");
             }
-            
-            return Ok(books);
+
+            return Ok(result);
         }
-
-        // // GET: api/books/search?author=
-        // [HttpGet("search"), Authorize]
-        // public ActionResult<Book> SearchBookByAuthor([FromQuery] string author)
-        // {
-        //     if (string.IsNullOrEmpty(author))
-        //     {
-        //         return BadRequest("Query parameter cannot be empty");
-        //     }
-
-        //     var books = _context.Books.Where(b => EF.Functions.Like(b.Title, $"%{author}%")).ToList();
-
-
-        //     if (!books.Any())
-        //     {
-        //         return NotFound("No books found with the given author.");
-        //     }
-            
-        //     return Ok(books);
-        // }
     }
 }
