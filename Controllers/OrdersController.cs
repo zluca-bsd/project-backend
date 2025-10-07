@@ -7,6 +7,7 @@ namespace project_backend
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class OrdersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -16,7 +17,7 @@ namespace project_backend
             _context = context;
         }
 
-        [HttpGet, Authorize]
+        [HttpGet]
         public IActionResult GetAllOrders()
         {
             var orders = _context.Orders.ToList();
@@ -24,7 +25,7 @@ namespace project_backend
         }
 
         // GET: api/orders/{id}
-        [HttpGet("{id:guid}"), Authorize]
+        [HttpGet("{id:guid}")]
         public ActionResult<Order> GetOrder(Guid id)
         {
             var order = _context.Orders.Find(id);
@@ -33,7 +34,7 @@ namespace project_backend
         }
 
         // POST: api/orders
-        [HttpPost, Authorize]
+        [HttpPost]
         public ActionResult<Order> CreateOrder([FromBody] Order order)
         {
             if (!ModelState.IsValid)
@@ -68,7 +69,7 @@ namespace project_backend
         }
 
         // DELETE: api/orders/{id}
-        [HttpDelete("{id:guid}"), Authorize]
+        [HttpDelete("{id:guid}")]
         public IActionResult DeleteOrder(Guid id)
         {
             var order = _context.Orders.Find(id);
@@ -84,7 +85,7 @@ namespace project_backend
         }
 
         // PUT: api/orders/{id}
-        [HttpPut("{id:guid}"), Authorize]
+        [HttpPut("{id:guid}")]
         public IActionResult UpdateOrder(Guid id, [FromBody] Order order)
         {
             // Ensure the route ID and body ID match
@@ -118,7 +119,7 @@ namespace project_backend
         }
 
         // GET: api/orders/search?bookid=BookId&customerid=CustomerId
-        [HttpGet("search"), Authorize]
+        [HttpGet("search")]
         public ActionResult<Order> SearchOrder([FromQuery] OrderSearch searchCriteria)
         {
             var filteredOrders = _context.Orders.AsQueryable();

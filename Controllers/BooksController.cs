@@ -9,6 +9,7 @@ namespace project_backend.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
+    [Authorize]
     public class BooksController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -29,7 +30,7 @@ namespace project_backend.Controllers
         /// <remarks>
         /// This endpoint requires the user to be authenticated.
         /// </remarks>
-        [HttpGet, Authorize]
+        [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult GetAllBooks()
         {
@@ -50,7 +51,7 @@ namespace project_backend.Controllers
         /// <remarks>
         /// This endpoint requires authentication.
         /// </remarks>
-        [HttpGet("{id:guid}"), Authorize]
+        [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<Book> GetBook(Guid id)
@@ -69,10 +70,18 @@ namespace project_backend.Controllers
         /// Creates the book in the database
         /// </summary>
         /// <param name="book">The book that needs to be created</param>
-        /// <returns> The newrly created book with its Id </returns>
-        /// <response code="201">Returns the newly created item</response>
-        /// <response code="400">If the parameter book is not valid</response>
-        [HttpPost, Authorize]
+        /// <returns>
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status201Created"/> – If the book was successfully created.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status400BadRequest"/> – If the book parameter contains error.</description></item>
+        /// </list>
+        /// </returns>
+        /// <response code="201">The book has been successfully created.</response>
+        /// <response code="400">The book parameter contains error.</response>
+        /// <remarks>
+        /// This endpoint requires authorization.
+        /// </remarks>
+        [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<Book> CreateBook([FromBody] Book book)
@@ -107,7 +116,7 @@ namespace project_backend.Controllers
         /// <remarks>
         /// This endpoint requires authorization.
         /// </remarks>
-        [HttpDelete("{id:guid}"), Authorize]
+        [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult DeleteBook(Guid id)
@@ -141,7 +150,7 @@ namespace project_backend.Controllers
         /// <remarks>
         /// This endpoint requires authorization.
         /// </remarks>
-        [HttpPut("{id:guid}"), Authorize]
+        [HttpPut("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -193,7 +202,7 @@ namespace project_backend.Controllers
         /// <remarks>
         /// This endpoint requires authentication.
         /// </remarks>
-        [HttpGet("search"), Authorize]
+        [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<Book> SearchBook([FromQuery] BookSearch searchCriteria)

@@ -7,6 +7,7 @@ namespace project_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class CustomersController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -17,7 +18,6 @@ namespace project_backend.Controllers
         }
 
         // GET: api/customers
-        // [HttpGet, Authorize]
         [HttpGet]
         public IActionResult GetAllCustomers()
         {
