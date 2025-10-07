@@ -1,10 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using project_backend.Models;
 
 namespace project_backend
 {
@@ -42,6 +39,23 @@ namespace project_backend
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            if (order.CustomerId == Guid.Empty || order.BookId == Guid.Empty)
+            {
+                return BadRequest("CustomerId or BookId cannot be empty");
+            }
+
+            var customer = _context.Customers.Find(order.CustomerId);
+            if (customer == null)
+            {
+                return NotFound("CustomerId does not exist");
+            }
+
+            var book = _context.Books.Find(order.BookId);
+            if (book == null)
+            {
+                return NotFound("BookId does not exist");
             }
 
             // Ensure ID is generated server-side
@@ -105,29 +119,29 @@ namespace project_backend
 
         // GET: api/orders/search?bookid=BookId&customerid=CustomerId
         [HttpGet("search"), Authorize]
-        public ActionResult<Order> SearchBookByTitle([FromQuery] BookSearch searchCriteria)
+        public ActionResult<Order> SearchOrder([FromQuery] OrderSearch searchCriteria)
         {
-            var filteredBooks = _context.Books.AsQueryable();
+            var filteredOrders = _context.Orders.AsQueryable();
 
-            if (!string.IsNullOrEmpty(searchCriteria.Title))
+            if (!string.IsNullOrEmpty(searchCriteria.CustomerId.ToString()))
             {
-                filteredBooks = filteredBooks.Where(b =>
-                    EF.Functions.Like(b.Title, $"%{searchCriteria.Title}%")
+                filteredOrders = filteredOrders.Where(b =>
+                    EF.Functions.Like(b.CustomerId.ToString(), $"%{searchCriteria.CustomerId}%")
                 );
             }
 
-            if (!string.IsNullOrEmpty(searchCriteria.Author))
+            if (!string.IsNullOrEmpty(searchCriteria.BookId.ToString()))
             {
-                filteredBooks = filteredBooks.Where(b =>
-                    EF.Functions.Like(b.Author, $"%{searchCriteria.Author}%")
+                filteredOrders = filteredOrders.Where(b =>
+                    EF.Functions.Like(b.BookId.ToString(), $"%{searchCriteria.BookId}%")
                 );
             }
 
-            var result = filteredBooks.ToList();
+            var result = filteredOrders.ToList();
 
             if (!result.Any())
             {
-                return NotFound("No books found with the given title.");
+                return NotFound("No orders found with the given search criteria.");
             }
 
             return Ok(result);

@@ -133,7 +133,7 @@ namespace project_backend.Controllers
 
             if (!result.Any())
             {
-                return NotFound("No books found with the given title.");
+                return NotFound("No books found with the given search criteria.");
             }
 
             return Ok(result);
