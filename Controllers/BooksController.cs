@@ -111,7 +111,7 @@ namespace project_backend.Controllers
 
         // GET: api/books/search?title=Title&author=Author
         [HttpGet("search"), Authorize]
-        public ActionResult<Book> SearchBookByTitle([FromQuery] BookSearch searchCriteria)
+        public ActionResult<Book> SearchBook([FromQuery] BookSearch searchCriteria)
         {
             var filteredBooks = _context.Books.AsQueryable();
 
