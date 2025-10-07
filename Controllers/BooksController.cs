@@ -86,11 +86,6 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<Book> CreateBook([FromBody] Book book)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             // Ensure ID is generated server-side
             book.Id = Guid.NewGuid();
 
@@ -195,18 +190,29 @@ namespace project_backend.Controllers
         /// </summary>
         /// <param name="searchCriteria">An object containing optional title and author search parameters.</param>
         /// <returns>
-        /// A list of books matching the search criteria.
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status200OK"/> – If the books were successfully found. Returns the list of books.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status400BadRequest"/> – If the search criteria is invalid (empty).</description></item>
+        ///   <item><description><see cref="StatusCodes.Status404NotFound"/> – If No books matched the search criteria.</description></item>
+        /// </list>
         /// </returns>
         /// <response code="200">Returns the list of matching books.</response>
+        /// <response code="400">The search criteria is invalid.</response>
         /// <response code="404">No books matched the search criteria.</response>
         /// <remarks>
         /// This endpoint requires authentication.
         /// </remarks>
         [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<Book> SearchBook([FromQuery] BookSearch searchCriteria)
+        public ActionResult<List<Book>> SearchBook([FromQuery] BookSearch searchCriteria)
         {
+            if (string.IsNullOrWhiteSpace(searchCriteria.Title) && string.IsNullOrWhiteSpace(searchCriteria.Author))
+            {
+                return BadRequest("Invalid search criteria");
+            }
+
             var filteredBooks = _context.Books.AsQueryable();
 
             if (!string.IsNullOrEmpty(searchCriteria.Title))
