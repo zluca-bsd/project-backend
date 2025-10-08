@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
-using System.Linq;
 
 namespace project_backend.Controllers
 {
@@ -32,9 +31,9 @@ namespace project_backend.Controllers
         /// </remarks>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult GetAllBooks()
+        public async Task<IActionResult> GetAllBooks()
         {
-            var books = _context.Books.ToList();
+            var books = await _context.Books.ToListAsync();
             return Ok(books);
         }
 
@@ -54,9 +53,9 @@ namespace project_backend.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<Book> GetBook(Guid id)
+        public async Task<ActionResult<Book>> GetBook(Guid id)
         {
-            var book = _context.Books.Find(id);
+            var book = await _context.Books.FindAsync(id);
             if (book == null)
             {
                 return NotFound("Book not found");
@@ -84,13 +83,12 @@ namespace project_backend.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public ActionResult<Book> CreateBook([FromBody] Book book)
+        public async Task<ActionResult<Book>> CreateBook([FromBody] Book book)
         {
             // Ensure ID is generated server-side
             book.Id = Guid.NewGuid();
-
-            _context.Books.Add(book);
-            _context.SaveChanges();
+            await _context.Books.AddAsync(book);
+            await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
         }
@@ -114,16 +112,16 @@ namespace project_backend.Controllers
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult DeleteBook(Guid id)
+        public async Task<IActionResult> DeleteBookAsync(Guid id)
         {
-            var book = _context.Books.Find(id);
+            var book = await _context.Books.FindAsync(id);
             if (book == null)
             {
                 return NotFound("Book not found");
             }
 
             _context.Books.Remove(book);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -150,7 +148,7 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult UpdateBook(Guid id, [FromBody] Book book)
+        public async Task<IActionResult> UpdateBook(Guid id, [FromBody] Book book)
         {
             // Ensure the route ID and body ID match
             if (id != book.Id)
@@ -159,7 +157,7 @@ namespace project_backend.Controllers
             }
 
             // Check if the book exists
-            var existingBook = _context.Books.Find(id);
+            var existingBook = await _context.Books.FindAsync(id);
             if (existingBook == null)
             {
                 return NotFound("Book not found");
@@ -173,8 +171,8 @@ namespace project_backend.Controllers
 
             try
             {
-                _context.Books.Update(existingBook);
-                _context.SaveChanges();
+                // Entity is already tracked, no need to call _context.Update();
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateException e)
             {
@@ -206,7 +204,7 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<List<Book>> SearchBook([FromQuery] BookSearch searchCriteria)
+        public async Task<ActionResult<List<Book>>> SearchBook([FromQuery] BookSearch searchCriteria)
         {
             if (string.IsNullOrWhiteSpace(searchCriteria.Title) && string.IsNullOrWhiteSpace(searchCriteria.Author))
             {
@@ -229,7 +227,7 @@ namespace project_backend.Controllers
                 );
             }
 
-            var result = filteredBooks.ToList();
+            var result = await filteredBooks.ToListAsync();
 
             if (!result.Any())
             {
