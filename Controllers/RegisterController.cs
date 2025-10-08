@@ -27,6 +27,8 @@ namespace project_backend.Controllers
         /// <response code="200">Registration was successful</response>
         /// <response code="400">User with the given email is already registered</response>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public IActionResult Register([FromBody] Register register)
         {
             // Check if the email already exists (case-insensitive)
