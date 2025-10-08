@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -29,9 +30,9 @@ namespace project_backend.Controllers
         /// <response code="200">Returns the list of customers</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult GetAllCustomers()
+        public async Task<IActionResult> GetAllCustomers()
         {
-            var customers = _context.Customers.ToList();
+            var customers = await _context.Customers.ToListAsync();
             return Ok(customers);
         }
 
@@ -51,9 +52,9 @@ namespace project_backend.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<Customer> GetCustomer(Guid id)
+        public async Task<ActionResult<Customer>> GetCustomer(Guid id)
         {
-            var customer = _context.Customers.Find(id);
+            var customer = await _context.Customers.FindAsync(id);
             if (customer == null) return NotFound("Customer not found");
             return Ok(customer);
         }
@@ -93,9 +94,9 @@ namespace project_backend.Controllers
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult DeleteCustomer(Guid id)
+        public async Task<IActionResult> DeleteCustomer(Guid id)
         {
-            var customer = _context.Customers.Find(id);
+            var customer = await _context.Customers.FindAsync(id);
 
             if (customer == null)
             {
@@ -103,7 +104,7 @@ namespace project_backend.Controllers
             }
 
             _context.Customers.Remove(customer);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -131,7 +132,7 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult UpdateCustomer(Guid Id, [FromBody] Customer customer)
+        public async Task<IActionResult> UpdateCustomer(Guid Id, [FromBody] Customer customer)
         {
             // Ensure the route ID and body ID match
             if (Id != customer.Id)
@@ -140,7 +141,7 @@ namespace project_backend.Controllers
             }
 
             // Check if the customers exists
-            var existingCustomer = _context.Customers.Find(Id);
+            var existingCustomer = await _context.Customers.FindAsync(Id);
             if (existingCustomer == null)
             {
                 return NotFound("Customer not found");
@@ -152,8 +153,8 @@ namespace project_backend.Controllers
 
             try
             {
-                _context.Customers.Update(existingCustomer);
-                _context.SaveChanges();
+                // Entity is already tracked, no need to call _context.Update();
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateException e)
             {
