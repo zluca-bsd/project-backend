@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using project_backend.Models;
+using project_backend.Dtos.CustomerDtos;
 
 namespace project_backend.Controllers
 {
@@ -39,14 +39,9 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] LoginDto login)
         {
             Console.WriteLine($"Received login attempt: '{login.Email} : {login.Password}'");
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest("Invalid client request");
-            }
 
             var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Email == login.Email);
 

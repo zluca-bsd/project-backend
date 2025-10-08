@@ -1,11 +1,10 @@
-namespace project_backend.Models.CustomerModels
+namespace project_backend.Dtos.CustomerDtos
 {
-    public class Customer
+    public class CustomerReadDto
     {
         public required Guid Id { get; set; }
         public required string Name { get; set; }
         public required string Email { get; set; }
         public required string DateOfBirth { get; set; }
-        public required string Password { get; set; }
     }
 }

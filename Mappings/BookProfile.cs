@@ -12,7 +12,7 @@ namespace project_backend.Mappings
             CreateMap<Book, BookReadDto>();
             // For creating new books
             CreateMap<BookCreateDto, Book>();
-            // Optional: For updating
+            // For updating
             CreateMap<BookUpdateDto, Book>();
         }
     }
