@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using project_backend.Models;
@@ -38,7 +39,7 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public IActionResult Login([FromBody] Login login)
+        public async Task<IActionResult> Login([FromBody] Login login)
         {
             Console.WriteLine($"Received login attempt: '{login.Email} : {login.Password}'");
 
@@ -47,7 +48,7 @@ namespace project_backend.Controllers
                 return BadRequest("Invalid client request");
             }
 
-            var customer = _context.Customers.FirstOrDefault(c => c.Email == login.Email);
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Email == login.Email);
 
             if (customer == null)
             {
