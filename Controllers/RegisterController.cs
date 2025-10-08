@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
+using project_backend.Models.CustomerModels;
 
 namespace project_backend.Controllers
 {

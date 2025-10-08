@@ -1,9 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using project_backend.Models;
+using project_backend.Models.BookModels;
+using project_backend.Models.CustomerModels;
+using project_backend.Models.OrderModels;
 
 namespace project_backend
 {
@@ -16,6 +14,5 @@ namespace project_backend
             : base(options)
         {
         }
-
     }
 }

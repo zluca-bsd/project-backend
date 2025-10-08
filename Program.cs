@@ -8,6 +8,9 @@ using project_backend;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
+// Register automapper service
+builder.Services.AddAutoMapper(typeof(Program));
+
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>

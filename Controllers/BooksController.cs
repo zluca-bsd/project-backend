@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using project_backend.Models;
+using project_backend.Models.BookModels;
+using project_backend.Dtos.BookDtos;
+using AutoMapper;
 
 namespace project_backend.Controllers
 {
@@ -12,10 +14,12 @@ namespace project_backend.Controllers
     public class BooksController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-        public BooksController(AppDbContext context)
+        public BooksController(AppDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/books
@@ -31,10 +35,12 @@ namespace project_backend.Controllers
         /// </remarks>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllBooks()
+        public async Task<ActionResult<IEnumerable<BookReadDto>>> GetAllBooks()
         {
             var books = await _context.Books.ToListAsync();
-            return Ok(books);
+            var bookReadDtos = _mapper.Map<IEnumerable<BookReadDto>>(books);
+
+            return Ok(bookReadDtos);
         }
 
         // GET: api/books/{id}
@@ -53,7 +59,7 @@ namespace project_backend.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<Book>> GetBook(Guid id)
+        public async Task<ActionResult<BookReadDto>> GetBook(Guid id)
         {
             var book = await _context.Books.FindAsync(id);
             if (book == null)
@@ -61,14 +67,16 @@ namespace project_backend.Controllers
                 return NotFound("Book not found");
             }
 
-            return Ok(book);
+            var bookReadDto = _mapper.Map<BookReadDto>(book);
+
+            return Ok(bookReadDto);
         }
 
         // POST: api/books
         /// <summary>
         /// Creates the book in the database
         /// </summary>
-        /// <param name="book">The book that needs to be created</param>
+        /// <param name="bookCreateDto">The book that needs to be created</param>
         /// <returns>
         /// <list type="bullet">
         ///   <item><description><see cref="StatusCodes.Status201Created"/> – If the book was successfully created.</description></item>
@@ -83,14 +91,18 @@ namespace project_backend.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<Book>> CreateBook([FromBody] Book book)
+        public async Task<ActionResult<BookCreateDto>> CreateBook([FromBody] BookCreateDto bookCreateDto)
         {
+            var book = _mapper.Map<Book>(bookCreateDto);
             // Ensure ID is generated server-side
             book.Id = Guid.NewGuid();
+
             await _context.Books.AddAsync(book);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
+            var bookReadDto = _mapper.Map<BookReadDto>(book);
+
+            return CreatedAtAction(nameof(GetBook), new { id = bookReadDto.Id }, bookReadDto);
         }
 
         // DELETE: api/books/{id}
@@ -131,7 +143,7 @@ namespace project_backend.Controllers
         /// Updates the details of an existing book by its ID.
         /// </summary>
         /// <param name="id">The id of the book to update</param>
-        /// <param name="book">The updated book object containing new values</param>
+        /// <param name="bookUpdateDto">The updated book object containing new values</param>
         /// <returns>
         /// <list type="bullet">
         ///   <item><description><see cref="StatusCodes.Status200OK"/> – If the book was successfully updated. Returns the updated book.</description></item>
@@ -148,10 +160,10 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateBook(Guid id, [FromBody] Book book)
+        public async Task<IActionResult> UpdateBook(Guid id, [FromBody] BookUpdateDto bookUpdateDto)
         {
             // Ensure the route ID and body ID match
-            if (id != book.Id)
+            if (id != bookUpdateDto.Id)
             {
                 return BadRequest("The ID in the URL does not match the book ID.");
             }
@@ -163,11 +175,8 @@ namespace project_backend.Controllers
                 return NotFound("Book not found");
             }
 
-            // Update fields
-            existingBook.Title = book.Title;
-            existingBook.Author = book.Author;
-            existingBook.Price = book.Price;
-            existingBook.Category = book.Category;
+            // Update fields with automapper
+            _mapper.Map(bookUpdateDto, existingBook);
 
             try
             {
@@ -179,7 +188,9 @@ namespace project_backend.Controllers
                 return StatusCode(500, $"An error occurred while updating the book: {e.Message}");
             }
 
-            return Ok(existingBook);
+            var bookReadDto = _mapper.Map<BookReadDto>(existingBook);
+
+            return Ok(bookReadDto);
         }
 
         // GET: api/books/search?title=Title&author=Author
@@ -204,11 +215,11 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<List<Book>>> SearchBook([FromQuery] BookSearch searchCriteria)
+        public async Task<ActionResult<List<BookReadDto>>> SearchBook([FromQuery] BookSearch searchCriteria)
         {
             if (string.IsNullOrWhiteSpace(searchCriteria.Title) && string.IsNullOrWhiteSpace(searchCriteria.Author))
             {
-                return BadRequest("Invalid search criteria");
+                return BadRequest("At least one of 'title' or 'author' must be provided for search.");
             }
 
             var filteredBooks = _context.Books.AsQueryable();
@@ -227,14 +238,16 @@ namespace project_backend.Controllers
                 );
             }
 
-            var result = await filteredBooks.ToListAsync();
+            var books = await filteredBooks.ToListAsync();
 
-            if (!result.Any())
+            if (!books.Any())
             {
                 return NotFound("No books found with the given search criteria.");
             }
 
-            return Ok(result);
+            var bookReadDto = _mapper.Map<List<BookReadDto>>(books);
+
+            return Ok(bookReadDto);
         }
     }
 }
