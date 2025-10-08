@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,9 +28,9 @@ namespace project_backend
         /// <response code="200">Returns the list of orders</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public IActionResult GetAllOrders()
+        public async Task<IActionResult> GetAllOrders()
         {
-            var orders = _context.Orders.ToList();
+            var orders = await _context.Orders.ToListAsync();
             return Ok(orders);
         }
 
@@ -49,9 +50,9 @@ namespace project_backend
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<Order> GetOrder(Guid id)
+        public async Task<ActionResult<Order>> GetOrder(Guid id)
         {
-            var order = _context.Orders.Find(id);
+            var order = await _context.Orders.FindAsync(id);
             if (order == null) return NotFound("Order not found");
             return Ok(order);
         }
@@ -81,7 +82,7 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<Order> CreateOrder([FromBody] Order order)
+        public async Task<ActionResult<Order>> CreateOrder([FromBody] Order order)
         {
             if (!ModelState.IsValid)
             {
@@ -93,13 +94,13 @@ namespace project_backend
                 return BadRequest("CustomerId or BookId cannot be empty");
             }
 
-            var customer = _context.Customers.Find(order.CustomerId);
+            var customer = await _context.Customers.FindAsync(order.CustomerId);
             if (customer == null)
             {
                 return NotFound("CustomerId does not exist");
             }
 
-            var book = _context.Books.Find(order.BookId);
+            var book = await _context.Books.FindAsync(order.BookId);
             if (book == null)
             {
                 return NotFound("BookId does not exist");
@@ -108,8 +109,8 @@ namespace project_backend
             // Ensure ID is generated server-side
             order.Id = Guid.NewGuid();
 
-            _context.Orders.Add(order);
-            _context.SaveChanges();
+            await _context.Orders.AddAsync(order);
+            await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
         }
@@ -133,16 +134,16 @@ namespace project_backend
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public IActionResult DeleteOrder(Guid id)
+        public async Task<IActionResult> DeleteOrder(Guid id)
         {
-            var order = _context.Orders.Find(id);
+            var order = await _context.Orders.FindAsync(id);
             if (order == null)
             {
                 return NotFound("Order not found");
             }
 
             _context.Orders.Remove(order);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -173,7 +174,7 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public IActionResult UpdateOrder(Guid id, [FromBody] Order order)
+        public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] Order order)
         {
             // Ensure the route ID and body ID match
             if (id != order.Id)
@@ -182,7 +183,7 @@ namespace project_backend
             }
 
             // Check if the order exists
-            var existingOrder = _context.Orders.Find(id);
+            var existingOrder = await _context.Orders.FindAsync(id);
             if (existingOrder == null)
             {
                 return NotFound("Order not found");
@@ -194,8 +195,8 @@ namespace project_backend
 
             try
             {
-                _context.Orders.Update(existingOrder);
-                _context.SaveChanges();
+                // Entity is already tracked, no need to call _context.Update();
+                await _context.SaveChangesAsync();
             }
             catch (DbUpdateException e)
             {
@@ -224,7 +225,7 @@ namespace project_backend
         [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public ActionResult<List<Order>> SearchOrder([FromQuery] OrderSearch searchCriteria)
+        public async Task<ActionResult<List<Order>>> SearchOrder([FromQuery] OrderSearch searchCriteria)
         {
             var filteredOrders = _context.Orders.AsQueryable();
 
@@ -242,7 +243,7 @@ namespace project_backend
                 );
             }
 
-            var result = filteredOrders.ToList();
+            var result = await filteredOrders.ToListAsync();
 
             if (!result.Any())
             {
