@@ -1,4 +1,6 @@
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using project_backend.Models;
 
 namespace project_backend.Controllers
@@ -29,10 +31,10 @@ namespace project_backend.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public IActionResult Register([FromBody] Register register)
+        public async Task<IActionResult> Register([FromBody] Register register)
         {
             // Check if the email already exists (case-insensitive)
-            var existingUser = _context.Customers.FirstOrDefault(c => c.Email.ToLower() == register.Email.ToLower());
+            var existingUser = await _context.Customers.FirstOrDefaultAsync(c => c.Email.ToLower() == register.Email.ToLower());
 
             if (existingUser != null)
             {
@@ -41,8 +43,8 @@ namespace project_backend.Controllers
 
             var newCustomer = new Customer(register.Name, register.Email, register.DateOfBirth, register.Password, false);
 
-            _context.Customers.Add(newCustomer);
-            _context.SaveChanges();
+            await _context.Customers.AddAsync(newCustomer);
+            await _context.SaveChangesAsync();
 
             return Ok("Registration successful.");
         }
