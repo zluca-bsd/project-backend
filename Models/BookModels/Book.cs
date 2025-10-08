@@ -1,17 +1,11 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace project_backend.Models.BookModels
 {
     public class Book
     {
         public Guid Id { get; set; }
-        [Required]
         public required string Title { get; set; }
-        [Required]
         public required string Author { get; set; }
-        [Required]
         public required float Price { get; set; }
-        [Required]
         public required string Category { get; set; }
     }
 }
