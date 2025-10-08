@@ -8,6 +8,8 @@ namespace project_backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
+    [Authorize]
     public class BooksController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -18,8 +20,18 @@ namespace project_backend.Controllers
         }
 
         // GET: api/books
-        // Authenticated users only
-        [HttpGet, Authorize]
+        /// <summary>
+        /// Retrieves all books from the database.
+        /// </summary>
+        /// <returns>
+        /// A list of all books in the system.
+        /// </returns>
+        /// <response code="200">Returns the list of books.</response>
+        /// <remarks>
+        /// This endpoint requires the user to be authenticated.
+        /// </remarks>
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public IActionResult GetAllBooks()
         {
             var books = _context.Books.ToList();
@@ -27,7 +39,21 @@ namespace project_backend.Controllers
         }
 
         // GET: api/books/{id}
-        [HttpGet("{id:guid}"), Authorize]
+        /// <summary>
+        /// Retrieves a specific book by its unique identifier.
+        /// </summary>
+        /// <param name="id">The unique identifier (GUID) of the book to retrieve.</param>
+        /// <returns>
+        /// Returns the book details if found.
+        /// </returns>
+        /// <response code="200">Returns the requested book.</response>
+        /// <response code="404">If a book with the specified ID is not found.</response>
+        /// <remarks>
+        /// This endpoint requires authentication.
+        /// </remarks>
+        [HttpGet("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public ActionResult<Book> GetBook(Guid id)
         {
             var book = _context.Books.Find(id);
@@ -40,14 +66,26 @@ namespace project_backend.Controllers
         }
 
         // POST: api/books
-        [HttpPost, Authorize]
+        /// <summary>
+        /// Creates the book in the database
+        /// </summary>
+        /// <param name="book">The book that needs to be created</param>
+        /// <returns>
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status201Created"/> – If the book was successfully created.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status400BadRequest"/> – If the book parameter contains error.</description></item>
+        /// </list>
+        /// </returns>
+        /// <response code="201">The book has been successfully created.</response>
+        /// <response code="400">The book parameter contains error.</response>
+        /// <remarks>
+        /// This endpoint requires authorization.
+        /// </remarks>
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public ActionResult<Book> CreateBook([FromBody] Book book)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             // Ensure ID is generated server-side
             book.Id = Guid.NewGuid();
 
@@ -58,7 +96,24 @@ namespace project_backend.Controllers
         }
 
         // DELETE: api/books/{id}
-        [HttpDelete("{id:guid}"), Authorize]
+        /// <summary>
+        /// Deletes a book from the database by its ID.
+        /// </summary>
+        /// <param name="id">The unique identifier (GUID) of the book to delete.</param>
+        /// <returns>
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status204NoContent"/> – If the book was successfully deleted.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status404NotFound"/> – If the book with the specified ID was not found.</description></item>
+        /// </list>
+        /// </returns>
+        /// <response code="204">The book has been successfully deleted.</response>
+        /// <response code="404">No book with the specified ID was found.</response>
+        /// <remarks>
+        /// This endpoint requires authorization.
+        /// </remarks>
+        [HttpDelete("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public IActionResult DeleteBook(Guid id)
         {
             var book = _context.Books.Find(id);
@@ -74,7 +129,27 @@ namespace project_backend.Controllers
         }
 
         // PUT: api/books/{id}
-        [HttpPut("{id:guid}"), Authorize]
+        /// <summary>
+        /// Updates the details of an existing book by its ID.
+        /// </summary>
+        /// <param name="id">The id of the book to update</param>
+        /// <param name="book">The updated book object containing new values</param>
+        /// <returns>
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status200OK"/> – If the book was successfully updated. Returns the updated book.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status400BadRequest"/> – If the ID in the URL does not match the ID in the book object.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status404NotFound"/> – If the book with the specified ID does not exist.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status500InternalServerError"/> – If an error occurred while updating the book in the database.</description></item>
+        /// </list>
+        /// </returns>
+        /// <remarks>
+        /// This endpoint requires authorization.
+        /// </remarks>
+        [HttpPut("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public IActionResult UpdateBook(Guid id, [FromBody] Book book)
         {
             // Ensure the route ID and body ID match
@@ -110,9 +185,34 @@ namespace project_backend.Controllers
         }
 
         // GET: api/books/search?title=Title&author=Author
-        [HttpGet("search"), Authorize]
-        public ActionResult<Book> SearchBook([FromQuery] BookSearch searchCriteria)
+        /// <summary>
+        /// Searches for books based on optional title and/or author criteria.
+        /// </summary>
+        /// <param name="searchCriteria">An object containing optional title and author search parameters.</param>
+        /// <returns>
+        /// <list type="bullet">
+        ///   <item><description><see cref="StatusCodes.Status200OK"/> – If the books were successfully found. Returns the list of books.</description></item>
+        ///   <item><description><see cref="StatusCodes.Status400BadRequest"/> – If the search criteria is invalid (empty).</description></item>
+        ///   <item><description><see cref="StatusCodes.Status404NotFound"/> – If No books matched the search criteria.</description></item>
+        /// </list>
+        /// </returns>
+        /// <response code="200">Returns the list of matching books.</response>
+        /// <response code="400">The search criteria is invalid.</response>
+        /// <response code="404">No books matched the search criteria.</response>
+        /// <remarks>
+        /// This endpoint requires authentication.
+        /// </remarks>
+        [HttpGet("search")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public ActionResult<List<Book>> SearchBook([FromQuery] BookSearch searchCriteria)
         {
+            if (string.IsNullOrWhiteSpace(searchCriteria.Title) && string.IsNullOrWhiteSpace(searchCriteria.Author))
+            {
+                return BadRequest("Invalid search criteria");
+            }
+
             var filteredBooks = _context.Books.AsQueryable();
 
             if (!string.IsNullOrEmpty(searchCriteria.Title))
