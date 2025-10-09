@@ -159,6 +159,9 @@ namespace project_backend.Controllers
                 return NotFound("Customer not found");
             }
 
+            customerUpdateDto.Name = customerUpdateDto.Name.Trim();
+            customerUpdateDto.Email = customerUpdateDto.Email.Trim().ToLower();
+
             // Update fields with automapper
             _mapper.Map(customerUpdateDto, existingCustomer);
 
