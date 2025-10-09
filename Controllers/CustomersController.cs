@@ -1,7 +1,8 @@
-using System.Threading.Tasks;
+using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using project_backend.Dtos.CustomerDtos;
 using project_backend.Models.CustomerModels;
 
 namespace project_backend.Controllers
@@ -12,10 +13,12 @@ namespace project_backend.Controllers
     public class CustomersController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
 
-        public CustomersController(AppDbContext context)
+        public CustomersController(AppDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         // GET: api/customers
@@ -30,10 +33,12 @@ namespace project_backend.Controllers
         /// <response code="200">Returns the list of customers</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<IActionResult> GetAllCustomers()
+        public async Task<ActionResult<List<CustomerReadDto>>> GetAllCustomers()
         {
             var customers = await _context.Customers.ToListAsync();
-            return Ok(customers);
+
+            var customerReadDtos = _mapper.Map<List<CustomerReadDto>>(customers);
+            return Ok(customerReadDtos);
         }
 
         // GET: api/customers/{id}
@@ -52,11 +57,18 @@ namespace project_backend.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<Customer>> GetCustomer(Guid id)
+        public async Task<ActionResult<CustomerReadDto>> GetCustomer(Guid id)
         {
             var customer = await _context.Customers.FindAsync(id);
-            if (customer == null) return NotFound("Customer not found");
-            return Ok(customer);
+
+            if (customer == null)
+            {
+                return NotFound("Customer not found");
+            }
+
+            var customerReadDtos = _mapper.Map<CustomerReadDto>(customer);
+
+            return Ok(customerReadDtos);
         }
 
         // // POST: api/customers
@@ -114,7 +126,7 @@ namespace project_backend.Controllers
         /// Updates an existing customer by their unique identifier (GUID).
         /// </summary>
         /// <param name="Id">The GUID of the customer to update (from the route).</param>
-        /// <param name="customer">The updated customer object (from the request body).</param>
+        /// <param name="customerUpdateDto">The updated customer object (from the request body).</param>
         /// <returns>
         /// <list type="bullet">
         ///   <item><description><see cref="StatusCodes.Status200OK"/> - Customer was successfully updated</description></item>
@@ -132,10 +144,10 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateCustomer(Guid Id, [FromBody] Customer customer)
+        public async Task<ActionResult<CustomerReadDto>> UpdateCustomer(Guid Id, [FromBody] CustomerUpdateDto customerUpdateDto)
         {
             // Ensure the route ID and body ID match
-            if (Id != customer.Id)
+            if (Id != customerUpdateDto.Id)
             {
                 return BadRequest("The ID in the URL does not match the customer ID.");
             }
@@ -147,9 +159,8 @@ namespace project_backend.Controllers
                 return NotFound("Customer not found");
             }
 
-            existingCustomer.Name = customer.Name;
-            existingCustomer.Email = customer.Email;
-            existingCustomer.DateOfBirth = customer.DateOfBirth;
+            // Update fields with automapper
+            _mapper.Map(customerUpdateDto, existingCustomer);
 
             try
             {
@@ -161,7 +172,9 @@ namespace project_backend.Controllers
                 return StatusCode(500, $"An error occurred while updating the customer: {e.Message}");
             }
 
-            return Ok(existingCustomer);
+            var customerReadDto = _mapper.Map<CustomerReadDto>(existingCustomer);
+
+            return Ok(customerReadDto);
         }
     }
 }
