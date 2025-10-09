@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using project_backend;
@@ -55,6 +56,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+// Register AiSettings into the DI container
+builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
+builder.Services.AddSingleton(sp =>
+    sp.GetRequiredService<IOptions<AiSettings>>().Value);
+
+// Register the AiService with HttpClient
+builder.Services.AddHttpClient<AiService>();
 
 var app = builder.Build();
 
