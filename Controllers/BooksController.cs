@@ -35,10 +35,10 @@ namespace project_backend.Controllers
         /// </remarks>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<BookReadDto>>> GetAllBooks()
+        public async Task<ActionResult<List<BookReadDto>>> GetAllBooks()
         {
             var books = await _context.Books.ToListAsync();
-            var bookReadDtos = _mapper.Map<IEnumerable<BookReadDto>>(books);
+            var bookReadDtos = _mapper.Map<List<BookReadDto>>(books);
 
             return Ok(bookReadDtos);
         }
@@ -91,7 +91,7 @@ namespace project_backend.Controllers
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<BookCreateDto>> CreateBook([FromBody] BookCreateDto bookCreateDto)
+        public async Task<ActionResult<BookReadDto>> CreateBook([FromBody] BookCreateDto bookCreateDto)
         {
             var book = _mapper.Map<Book>(bookCreateDto);
             // Ensure ID is generated server-side
@@ -160,7 +160,7 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<IActionResult> UpdateBook(Guid id, [FromBody] BookUpdateDto bookUpdateDto)
+        public async Task<ActionResult<BookReadDto>> UpdateBook(Guid id, [FromBody] BookUpdateDto bookUpdateDto)
         {
             // Ensure the route ID and body ID match
             if (id != bookUpdateDto.Id)

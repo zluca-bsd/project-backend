@@ -31,10 +31,10 @@ namespace project_backend
         /// <response code="200">Returns the list of orders</response>
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        public async Task<ActionResult<IEnumerable<OrderReadDto>>> GetAllOrders()
+        public async Task<ActionResult<List<OrderReadDto>>> GetAllOrders()
         {
             var orders = await _context.Orders.ToListAsync();
-            var orderReadDto = _mapper.Map<IEnumerable<OrderReadDto>>(orders);
+            var orderReadDto = _mapper.Map<List<OrderReadDto>>(orders);
 
             return Ok(orderReadDto);
         }
@@ -244,7 +244,7 @@ namespace project_backend
         [HttpGet("search")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<IEnumerable<OrderReadDto>>> SearchOrder([FromQuery] OrderSearch searchCriteria)
+        public async Task<ActionResult<List<OrderReadDto>>> SearchOrder([FromQuery] OrderSearch searchCriteria)
         {
             if (searchCriteria.CustomerId == null && searchCriteria.BookId == null)
             {
@@ -274,7 +274,7 @@ namespace project_backend
                 return NotFound("No orders found with the given search criteria.");
             }
 
-            var orderReadDtos = _mapper.Map<IEnumerable<OrderReadDto>>(orders);
+            var orderReadDtos = _mapper.Map<List<OrderReadDto>>(orders);
 
             return Ok(orderReadDtos);
         }
