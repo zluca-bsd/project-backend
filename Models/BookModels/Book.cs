@@ -2,7 +2,7 @@ namespace project_backend.Models.BookModels
 {
     public class Book
     {
-        public Guid Id { get; set; }
+        public required Guid Id { get; set; }
         public required string Title { get; set; }
         public required string Author { get; set; }
         public required float Price { get; set; }
