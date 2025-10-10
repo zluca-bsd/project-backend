@@ -1,8 +1,7 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using project_backend.Dtos.CustomerDtos;
+using project_backend.Services.Interfaces;
 
 namespace project_backend.Controllers
 {
@@ -11,13 +10,11 @@ namespace project_backend.Controllers
     [Authorize]
     public class CustomersController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly ICustomerService _customerService;
 
-        public CustomersController(AppDbContext context, IMapper mapper)
+        public CustomersController(ICustomerService customerService)
         {
-            _context = context;
-            _mapper = mapper;
+            _customerService = customerService;
         }
 
         // GET: api/customers
@@ -34,10 +31,8 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<CustomerReadDto>>> GetAllCustomers()
         {
-            var customers = await _context.Customers.ToListAsync();
-
-            var customerReadDtos = _mapper.Map<List<CustomerReadDto>>(customers);
-            return Ok(customerReadDtos);
+            var customers = await _customerService.GetAllCustomersAsync();
+            return Ok(customers);
         }
 
         // GET: api/customers/{id}
@@ -56,18 +51,16 @@ namespace project_backend.Controllers
         [HttpGet("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult<CustomerReadDto>> GetCustomer(Guid id)
+        public async Task<ActionResult<CustomerReadDto>> GetCustomerById(Guid id)
         {
-            var customer = await _context.Customers.FindAsync(id);
+            var customer = await _customerService.GetCustomerByIdAsync(id);
 
             if (customer == null)
             {
                 return NotFound("Customer not found");
             }
 
-            var customerReadDtos = _mapper.Map<CustomerReadDto>(customer);
-
-            return Ok(customerReadDtos);
+            return Ok(customer);
         }
 
         // // POST: api/customers
@@ -107,15 +100,12 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteCustomer(Guid id)
         {
-            var customer = await _context.Customers.FindAsync(id);
+            var deleted = await _customerService.DeleteCustomerAsync(id);
 
-            if (customer == null)
+            if (!deleted)
             {
                 return NotFound("Customer not found");
             }
-
-            _context.Customers.Remove(customer);
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -124,7 +114,7 @@ namespace project_backend.Controllers
         /// <summary>
         /// Updates an existing customer by their unique identifier (GUID).
         /// </summary>
-        /// <param name="Id">The GUID of the customer to update (from the route).</param>
+        /// <param name="id">The GUID of the customer to update (from the route).</param>
         /// <param name="customerUpdateDto">The updated customer object (from the request body).</param>
         /// <returns>
         /// <list type="bullet">
@@ -143,40 +133,22 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<CustomerReadDto>> UpdateCustomer(Guid Id, [FromBody] CustomerUpdateDto customerUpdateDto)
+        public async Task<ActionResult<CustomerReadDto>> UpdateCustomer(Guid id, [FromBody] CustomerUpdateDto customerUpdateDto)
         {
             // Ensure the route ID and body ID match
-            if (Id != customerUpdateDto.Id)
+            if (id != customerUpdateDto.Id)
             {
                 return BadRequest("The ID in the URL does not match the customer ID.");
             }
 
             // Check if the customers exists
-            var existingCustomer = await _context.Customers.FindAsync(Id);
-            if (existingCustomer == null)
+            var updatedCustomer = await _customerService.UpdateCustomerAsync(id, customerUpdateDto);
+            if (updatedCustomer == null)
             {
                 return NotFound("Customer not found");
             }
 
-            customerUpdateDto.Name = customerUpdateDto.Name.Trim();
-            customerUpdateDto.Email = customerUpdateDto.Email.Trim().ToLower();
-
-            // Update fields with automapper
-            _mapper.Map(customerUpdateDto, existingCustomer);
-
-            try
-            {
-                // Entity is already tracked, no need to call _context.Update();
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException e)
-            {
-                return StatusCode(500, $"An error occurred while updating the customer: {e.Message}");
-            }
-
-            var customerReadDto = _mapper.Map<CustomerReadDto>(existingCustomer);
-
-            return Ok(customerReadDto);
+            return Ok(updatedCustomer);
         }
     }
 }
