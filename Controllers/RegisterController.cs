@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using project_backend.Models.CustomerModels;
 using project_backend.Dtos.CustomerDtos;
-using AutoMapper;
+using project_backend.Services.Interfaces;
 
 namespace project_backend.Controllers
 {
@@ -10,13 +8,10 @@ namespace project_backend.Controllers
     [Route("api/[controller]")]
     public class RegisterController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
-
-        public RegisterController(AppDbContext context, IMapper mapper)
+        private readonly IRegisterService _registerService;
+        public RegisterController(IRegisterService registerService)
         {
-            _context = context;
-            _mapper = mapper;
+            _registerService = registerService;
         }
 
         /// <summary>
@@ -36,25 +31,12 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Register([FromBody] RegisterDto register)
         {
-            register.Name = register.Name.Trim();
-            register.Email = register.Email.Trim().ToLower();
+            var registred = await _registerService.RegisterAsync(register);
 
-            // Check if the email already exists (case-insensitive)
-            var existingUser = await _context.Customers.FirstOrDefaultAsync(c => c.Email == register.Email);
-
-            if (existingUser != null)
+            if (!registred)
             {
                 return BadRequest("User is already registered.");
             }
-
-            var newCustomer = _mapper.Map<Customer>(register);
-            // Ensure ID is generated server-side
-            newCustomer.Id = Guid.NewGuid();
-            // Hash the password
-            newCustomer.Password = BCrypt.Net.BCrypt.HashPassword(newCustomer.Password);
-
-            await _context.Customers.AddAsync(newCustomer);
-            await _context.SaveChangesAsync();
 
             return Ok("Registration successful.");
         }
