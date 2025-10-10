@@ -18,7 +18,7 @@ builder.Services.AddScoped<IBooksService, BookService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IRegisterService, RegisterService>();
-
+builder.Services.AddScoped<IOrderService, OrderService>();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Dtos.OrderDtos;
 using project_backend.Models.OrderModels;
+using project_backend.Services.Interfaces;
 
 namespace project_backend
 {
@@ -12,13 +13,11 @@ namespace project_backend
     [Authorize]
     public class OrdersController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly IOrderService _orderService;
 
-        public OrdersController(AppDbContext context, IMapper mapper)
+        public OrdersController(IOrderService orderService)
         {
-            _context = context;
-            _mapper = mapper;
+            _orderService = orderService;
         }
 
         // GET: api/orders
@@ -33,10 +32,8 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<OrderReadDto>>> GetAllOrders()
         {
-            var orders = await _context.Orders.ToListAsync();
-            var orderReadDto = _mapper.Map<List<OrderReadDto>>(orders);
-
-            return Ok(orderReadDto);
+            var orders = await _orderService.GetAllOrdersAsync();
+            return Ok(orders);
         }
 
         // GET: api/orders/{id}
@@ -57,12 +54,13 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<Order>> GetOrder(Guid id)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null) return NotFound("Order not found");
+            var order = await _orderService.GetOrderByIdAsync(id);
+            if (order == null)
+            {
+                return NotFound("Order not found");
+            }
 
-            var orderReadDto = _mapper.Map<OrderReadDto>(order);
-
-            return Ok(orderReadDto);
+            return Ok(order);
         }
 
         // POST: api/orders
@@ -92,31 +90,14 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<OrderReadDto>> CreateOrder([FromBody] OrderCreateDto orderCreateDto)
         {
-            var customer = await _context.Customers.FindAsync(orderCreateDto.CustomerId);
+            var (success, message, order) = await _orderService.CreateOrderAsync(orderCreateDto);
 
-            if (customer == null)
+            if (!success || order == null)
             {
-                return NotFound("CustomerId does not exist");
+                return NotFound(message);
             }
 
-            var book = await _context.Books.FindAsync(orderCreateDto.BookId);
-
-            if (book == null)
-            {
-                return NotFound("BookId does not exist");
-            }
-
-            var order = _mapper.Map<Order>(orderCreateDto);
-
-            // Ensure ID is generated server-side
-            order.Id = Guid.NewGuid();
-
-            await _context.Orders.AddAsync(order);
-            await _context.SaveChangesAsync();
-
-            var orderReadDto = _mapper.Map<OrderReadDto>(order);
-
-            return CreatedAtAction(nameof(GetOrder), new { id = orderReadDto.Id }, orderReadDto);
+            return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
         }
 
         // DELETE: api/orders/{id}
@@ -140,14 +121,11 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteOrder(Guid id)
         {
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null)
+            var deleted = await _orderService.DeleteOrderAsync(id);
+            if (!deleted)
             {
                 return NotFound("Order not found");
             }
-
-            _context.Orders.Remove(order);
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -181,48 +159,13 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<ActionResult<OrderReadDto>> UpdateOrder(Guid id, [FromBody] OrderUpdateDto orderUpdateDto)
         {
-            // Ensure the route ID and body ID match
-            if (id != orderUpdateDto.Id)
+            var (success, message, order) = await _orderService.UpdateOrderAsync(id, orderUpdateDto);
+            if (!success)
             {
-                return BadRequest("The ID in the URL does not match the order ID.");
+                return NotFound(message);
             }
-
-            // Check if the order exists
-            var existingOrder = await _context.Orders.FindAsync(id);
-            if (existingOrder == null)
-            {
-                return NotFound("Order not found");
-            }
-
-            // Check if the customer and book exists
-            var newCustomer = await _context.Customers.FindAsync(orderUpdateDto.CustomerId);
-            if (newCustomer == null)
-            {
-                return NotFound("The customer does not exist");
-            }
-
-            var newBook = await _context.Books.FindAsync(orderUpdateDto.BookId);
-            if (newBook == null)
-            {
-                return NotFound("The book does not exist");
-            }
-
-            // Update fields with automapper
-            _mapper.Map(orderUpdateDto, existingOrder);
-
-            try
-            {
-                // Entity is already tracked, no need to call _context.Update();
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException e)
-            {
-                return StatusCode(500, $"An error occurred while updating the order: {e.Message}");
-            }
-
-            var orderReadDto = _mapper.Map<OrderReadDto>(existingOrder);
-
-            return Ok(orderReadDto);
+            
+            return Ok(order);
         }
 
         // GET: api/orders/search?bookid=BookId&customerid=CustomerId
@@ -246,37 +189,14 @@ namespace project_backend
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<List<OrderReadDto>>> SearchOrder([FromQuery] OrderSearch searchCriteria)
         {
-            if (searchCriteria.CustomerId == null && searchCriteria.BookId == null)
+            var (success, message, order) = await _orderService.SearchOrdersAsync(searchCriteria);
+
+            if (!success)
             {
-                return BadRequest("At least one of 'CustomerId' or 'BookId' must be provided for search.");
+                return NotFound(message);
             }
 
-            var filteredOrders = _context.Orders.AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchCriteria.CustomerId.ToString()))
-            {
-                filteredOrders = filteredOrders.Where(b =>
-                    EF.Functions.Like(b.CustomerId.ToString(), $"%{searchCriteria.CustomerId}%")
-                );
-            }
-
-            if (!string.IsNullOrEmpty(searchCriteria.BookId.ToString()))
-            {
-                filteredOrders = filteredOrders.Where(b =>
-                    EF.Functions.Like(b.BookId.ToString(), $"%{searchCriteria.BookId}%")
-                );
-            }
-
-            var orders = await filteredOrders.ToListAsync();
-
-            if (!orders.Any())
-            {
-                return NotFound("No orders found with the given search criteria.");
-            }
-
-            var orderReadDtos = _mapper.Map<List<OrderReadDto>>(orders);
-
-            return Ok(orderReadDtos);
+            return Ok(order);
         }
     }
 }

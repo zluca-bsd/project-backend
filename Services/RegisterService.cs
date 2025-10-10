@@ -2,8 +2,9 @@ using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Dtos.CustomerDtos;
 using project_backend.Models.CustomerModels;
+using project_backend.Services.Interfaces;
 
-namespace project_backend.Services.Interfaces
+namespace project_backend.Services
 {
     public class RegisterService : IRegisterService
     {
