@@ -15,6 +15,7 @@ builder.Services.AddAutoMapper(typeof(Program));
 
 // Register services
 builder.Services.AddScoped<IBooksService, BookService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();

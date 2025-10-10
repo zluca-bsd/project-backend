@@ -1,9 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using project_backend.Models.BookModels;
 using project_backend.Dtos.BookDtos;
-using AutoMapper;
 using project_backend.Services.Interfaces;
 
 namespace project_backend.Controllers

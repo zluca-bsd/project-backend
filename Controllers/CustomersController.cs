@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using project_backend.Dtos.CustomerDtos;
-using project_backend.Models.CustomerModels;
 
 namespace project_backend.Controllers
 {
