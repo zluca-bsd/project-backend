@@ -1,11 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using project_backend.Dtos.CustomerDtos;
+using project_backend.Services.Interfaces;
 
 namespace project_backend.Controllers
 {
@@ -13,12 +8,10 @@ namespace project_backend.Controllers
     [Route("api/[controller]")]
     public class LoginController : ControllerBase
     {
-        private readonly JwtSettings _jwtSettings;
-        private readonly AppDbContext _context;
-        public LoginController(IOptions<JwtSettings> jwtSettings, AppDbContext context)
+        private readonly ILoginService _loginService;
+        public LoginController(ILoginService loginService)
         {
-            _jwtSettings = jwtSettings.Value;
-            _context = context;
+            _loginService = loginService;
         }
 
         /// <summary>
@@ -41,46 +34,14 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Login([FromBody] LoginDto login)
         {
-            Console.WriteLine($"Received login attempt: '{login.Email} : {login.Password}'");
+            var tokenString = await _loginService.Login(login);
 
-            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.Email == login.Email);
-
-            if (customer == null)
-            {
-                Console.WriteLine("No customer found with that email.");
-                return Unauthorized("Wrong email or password");
-            }
-
-            if (!BCrypt.Net.BCrypt.Verify(login.Password, customer.Password))
+            if (tokenString == null)
             {
                 return Unauthorized("Wrong email or password");
             }
-
-            var tokenString = GenerateJwtToken(login.Email);
 
             return Ok(new AuthenticatedResponse { Token = tokenString });
-        }
-
-        private string GenerateJwtToken(string email)
-        {
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: _jwtSettings.Issuer,
-                audience: _jwtSettings.Audience,
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(30),
-                signingCredentials: creds
-                );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
