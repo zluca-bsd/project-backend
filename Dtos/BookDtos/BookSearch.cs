@@ -1,4 +1,4 @@
-namespace project_backend.Models.BookModels
+namespace project_backend.Dtos.BookDtos
 {
     public class BookSearch
     {

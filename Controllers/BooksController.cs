@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using project_backend.Models.BookModels;
 using project_backend.Dtos.BookDtos;
 using AutoMapper;
+using project_backend.Services.Interfaces;
 
 namespace project_backend.Controllers
 {
@@ -13,13 +14,11 @@ namespace project_backend.Controllers
     [Authorize]
     public class BooksController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
+        private readonly IBooksService _booksService;
 
-        public BooksController(AppDbContext context, IMapper mapper)
+        public BooksController(IBooksService booksService)
         {
-            _context = context;
-            _mapper = mapper;
+            _booksService = booksService;
         }
 
         // GET: api/books
@@ -37,10 +36,8 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<BookReadDto>>> GetAllBooks()
         {
-            var books = await _context.Books.ToListAsync();
-            var bookReadDtos = _mapper.Map<List<BookReadDto>>(books);
-
-            return Ok(bookReadDtos);
+            var books = await _booksService.GetAllBooksAsync();
+            return Ok(books);
         }
 
         // GET: api/books/{id}
@@ -61,15 +58,13 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<BookReadDto>> GetBook(Guid id)
         {
-            var book = await _context.Books.FindAsync(id);
+            var book = await _booksService.GetBookByIdAsync(id);
             if (book == null)
             {
                 return NotFound("Book not found");
             }
 
-            var bookReadDto = _mapper.Map<BookReadDto>(book);
-
-            return Ok(bookReadDto);
+            return Ok(book);
         }
 
         // POST: api/books
@@ -93,16 +88,8 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<BookReadDto>> CreateBook([FromBody] BookCreateDto bookCreateDto)
         {
-            var book = _mapper.Map<Book>(bookCreateDto);
-            // Ensure ID is generated server-side
-            book.Id = Guid.NewGuid();
-
-            await _context.Books.AddAsync(book);
-            await _context.SaveChangesAsync();
-
-            var bookReadDto = _mapper.Map<BookReadDto>(book);
-
-            return CreatedAtAction(nameof(GetBook), new { id = bookReadDto.Id }, bookReadDto);
+            var book = await _booksService.CreateBookAsync(bookCreateDto);
+            return CreatedAtAction(nameof(GetBook), new { id = book.Id }, book);
         }
 
         // DELETE: api/books/{id}
@@ -126,14 +113,11 @@ namespace project_backend.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteBookAsync(Guid id)
         {
-            var book = await _context.Books.FindAsync(id);
-            if (book == null)
+            var deleted = await _booksService.DeleteBookAsync(id);
+            if (!deleted)
             {
                 return NotFound("Book not found");
             }
-
-            _context.Books.Remove(book);
-            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -168,29 +152,13 @@ namespace project_backend.Controllers
                 return BadRequest("The ID in the URL does not match the book ID.");
             }
 
-            // Check if the book exists
-            var existingBook = await _context.Books.FindAsync(id);
-            if (existingBook == null)
+            var updatedBook = await _booksService.UpdateBookAsync(id, bookUpdateDto);
+            if (updatedBook == null)
             {
                 return NotFound("Book not found");
             }
 
-            // Update fields with automapper
-            _mapper.Map(bookUpdateDto, existingBook);
-
-            try
-            {
-                // Entity is already tracked, no need to call _context.Update();
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateException e)
-            {
-                return StatusCode(500, $"An error occurred while updating the book: {e.Message}");
-            }
-
-            var bookReadDto = _mapper.Map<BookReadDto>(existingBook);
-
-            return Ok(bookReadDto);
+            return Ok(updatedBook);
         }
 
         // GET: api/books/search?title=Title&author=Author
@@ -222,32 +190,14 @@ namespace project_backend.Controllers
                 return BadRequest("At least one of 'title' or 'author' must be provided for search.");
             }
 
-            var filteredBooks = _context.Books.AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchCriteria.Title))
-            {
-                filteredBooks = filteredBooks.Where(b =>
-                    EF.Functions.Like(b.Title, $"%{searchCriteria.Title}%")
-                );
-            }
-
-            if (!string.IsNullOrEmpty(searchCriteria.Author))
-            {
-                filteredBooks = filteredBooks.Where(b =>
-                    EF.Functions.Like(b.Author, $"%{searchCriteria.Author}%")
-                );
-            }
-
-            var books = await filteredBooks.ToListAsync();
+            var books = await _booksService.SearchBooksAsync(searchCriteria);
 
             if (!books.Any())
             {
                 return NotFound("No books found with the given search criteria.");
             }
 
-            var bookReadDto = _mapper.Map<List<BookReadDto>>(books);
-
-            return Ok(bookReadDto);
+            return Ok(books);
         }
     }
 }

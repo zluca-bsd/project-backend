@@ -1,4 +1,4 @@
-namespace project_backend.Models.OrderModels
+namespace project_backend.Dtos.OrderDtos
 {
     public class OrderSearch
     {

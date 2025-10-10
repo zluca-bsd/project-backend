@@ -4,12 +4,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using project_backend;
+using project_backend.Services;
+using project_backend.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Register automapper service
 builder.Services.AddAutoMapper(typeof(Program));
+
+// Register services
+builder.Services.AddScoped<IBooksService, BookService>();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
