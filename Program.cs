@@ -9,6 +9,7 @@ using project_backend.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
+builder.Services.AddHttpClient();
 
 // Register automapper service
 builder.Services.AddAutoMapper(typeof(Program));
@@ -19,6 +20,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IRegisterService, RegisterService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IAiService, AiService>();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
@@ -64,6 +66,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.Configure<AiSettings>(builder.Configuration.GetSection("AiSettings"));
 
 var app = builder.Build();
 
