@@ -1,6 +1,6 @@
 namespace project_backend.Dtos.AiDtos
 {
-    public class AiResponse
+    public class AiResponseDto
     {
         public required string Response { get; set; }
     }
