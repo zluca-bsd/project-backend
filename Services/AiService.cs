@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -30,7 +31,7 @@ namespace project_backend.Services
             Only respond with a valid SQLite SQL SELECT query. 
             Do not include any explanation. 
             Example:
-            SELECT * FROM Books WHERE Title Like = 'Animal Farm'
+            SELECT * FROM Books WHERE Title LIKE 'Animal Farm'
             Question: "{request}"
 
             SQL:
@@ -81,26 +82,29 @@ namespace project_backend.Services
 
         private string getDatabaseSchema()
         {
-            string databaseSchema = "";
+            var schema = new StringBuilder();
 
-            var entityTypes = _context.Model.GetEntityTypes();
-
-            foreach (var et in entityTypes)
+            foreach (var entity in _context.Model.GetEntityTypes())
             {
-                databaseSchema += et.GetTableName() + ": ";
+                var tableName = entity.GetTableName();
+                var columns = entity.GetProperties()
+                    .Select(p => $"{p.Name} {MapToSqlType(p.ClrType)}");
 
-                foreach (var prop in et.GetProperties())
-                {
-                    string name = prop.Name;
-                    string type = prop.ClrType.Name;
-
-                    databaseSchema += name + " " + type + ", ";
-                }
-
-                databaseSchema += "\n";
+                schema.AppendLine($"Table: {tableName}({string.Join(", ", columns)})");
             }
-            
-            return databaseSchema;
+
+            Console.WriteLine(schema);
+            return schema.ToString();
+        }
+
+        private string MapToSqlType(Type type)
+        {
+            if (type == typeof(int) || type == typeof(long)) return "INTEGER";
+            if (type == typeof(string)) return "TEXT";
+            if (type == typeof(DateTime)) return "DATETIME";
+            if (type == typeof(bool)) return "BOOLEAN";
+            if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return "REAL";
+            return "TEXT"; // default fallback
         }
     }
 }
