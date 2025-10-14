@@ -24,11 +24,11 @@ namespace project_backend.Controllers
             return Ok(response);
         }
 
-        [HttpPost("customers")]
-        public async Task<ActionResult<AiResponse>> AskAiCustomers([FromBody] AiRequest request)
-        {
-            var response = await _aiService.AskAi<Customer>(request.Request);
-            return Ok(response);
-        }
+        // [HttpPost("customers")]
+        // public async Task<ActionResult<AiResponse>> AskAiCustomers([FromBody] AiRequest request)
+        // {
+        //     var response = await _aiService.AskAi<Customer>(request.Request);
+        //     return Ok(response);
+        // }
     }
 }

@@ -1,8 +1,10 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using project_backend.Dtos.AiDtos;
+using project_backend.Models.BookModels;
 using project_backend.Services.Interfaces;
 
 namespace project_backend.Services
@@ -20,13 +22,13 @@ namespace project_backend.Services
             _aiSettings = aiSettings.Value;
         }
 
-        public async Task<List<T>> AskAi<T>(string request) where T : class
+        public async Task<string> AskAi<T>(string request) where T : class
         {
             var systemPrompt = $"""
             You are an assistant that translates natural language questions into SQL SELECT queries.
 
             Schema:
-            {getDatabaseSchema()}
+            {GetDatabaseSchema()}
 
             Only respond with a valid SQLite SQL SELECT query. 
             Do not include any explanation. 
@@ -38,6 +40,9 @@ namespace project_backend.Services
             """;
 
             var httpClient = _httpClientFactory.CreateClient();
+            // Increase timeout: response from LLM can take more than 100s (default value)
+            httpClient.Timeout = TimeSpan.FromSeconds(300);
+            
             var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, new
             {
                 prompt = systemPrompt,
@@ -72,7 +77,9 @@ namespace project_backend.Services
 
             try
             {
-                return await _context.Set<T>().FromSqlRaw(sqlQuery).ToListAsync();
+                var Sqlresult = await _context.Set<T>().FromSqlRaw(sqlQuery).ToListAsync();
+
+                return await GenerateNaturalLanguageResponse(request, Sqlresult);
             }
             catch (Exception e)
             {
@@ -80,7 +87,7 @@ namespace project_backend.Services
             }
         }
 
-        private string getDatabaseSchema()
+        private string GetDatabaseSchema()
         {
             var schema = new StringBuilder();
 
@@ -105,6 +112,43 @@ namespace project_backend.Services
             if (type == typeof(bool)) return "BOOLEAN";
             if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return "REAL";
             return "TEXT"; // default fallback
+        }
+
+        private async Task<string> GenerateNaturalLanguageResponse<T>(string request, List<T> sqlresult) where T : class
+        {
+            var systemPrompt = $"""
+            You are an assistant that answers the question based on JSON input
+            Just answer the question and keep it short. Do not include any explanation
+
+            Request: {request}
+
+            JSON input: 
+            {JsonSerializer.Serialize(sqlresult, new JsonSerializerOptions { WriteIndented = true })}
+            """;
+
+            var httpClient = _httpClientFactory.CreateClient();
+            // Increase timeout: response from LLM can take more than 100s (default value)
+            httpClient.Timeout = TimeSpan.FromSeconds(300);
+
+            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, new
+            {
+                prompt = systemPrompt,
+                max_tokens = _aiSettings.MaxTokens,
+                temperature = _aiSettings.Temperature,
+            });
+
+            if (!response.IsSuccessStatusCode)
+                throw new Exception("Failed to get AI response");
+
+            var content = await response.Content.ReadFromJsonAsync<AiResponse>();
+
+            var answer = content?.Choices?.FirstOrDefault()?.Text?.Trim();
+            if (string.IsNullOrEmpty(answer))
+            {
+                throw new Exception("AI did not return a valid answer");
+            }
+
+            return answer;
         }
     }
 }
