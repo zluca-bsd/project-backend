@@ -1,9 +1,9 @@
-using project_backend.Models.BookModels;
+using project_backend.Dtos.AiDtos;
 
 namespace project_backend.Services.Interfaces
 {
     public interface IAiService
     {
-        Task<string> AskAi<T>(string request) where T : class;
+        Task<AiResponse> AskAi(string request);
     }
 }

@@ -1,0 +1,33 @@
+[
+    {
+        "type": "function",
+        "function": {
+            "name": "search_books",
+            "description": "Search for books in the database. Must provide at least one argument.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the book to search for"
+                    },
+                    "author": {
+                        "type": "string",
+                        "description": "The author of the book to search for"
+                    }
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_all_books",
+            "description": "Return all books in the database.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    }
+]

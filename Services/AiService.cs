@@ -1,154 +1,145 @@
-using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using project_backend.Dtos.AiDtos;
-using project_backend.Models.BookModels;
+using project_backend.Dtos.BookDtos;
 using project_backend.Services.Interfaces;
 
 namespace project_backend.Services
 {
     public class AiService : IAiService
     {
-        private readonly AppDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly AiSettings _aiSettings;
+        private readonly IBooksService _bookService;
+        private readonly List<AiToolDefinition> _tools;
 
-        public AiService(AppDbContext dbContext, IHttpClientFactory httpClientFactory, IOptions<AiSettings> aiSettings)
+        public AiService(IHttpClientFactory httpClientFactory, IOptions<AiSettings> aiSettings, IBooksService booksService)
         {
-            _context = dbContext;
             _httpClientFactory = httpClientFactory;
             _aiSettings = aiSettings.Value;
+            _bookService = booksService;
+
+            var json = File.ReadAllText("AiTools/tools.json");
+            _tools = JsonSerializer.Deserialize<List<AiToolDefinition>>(json) ?? new List<AiToolDefinition>();
         }
 
-        public async Task<string> AskAi<T>(string request) where T : class
+        public async Task<AiResponse> AskAi(string userPrompt)
         {
             var systemPrompt = $"""
-            You are an assistant that translates natural language questions into SQL SELECT queries.
-
-            Schema:
-            {GetDatabaseSchema()}
-
-            Only respond with a valid SQLite SQL SELECT query. 
-            Do not include any explanation. 
-            Example:
-            SELECT * FROM Books WHERE Title LIKE 'Animal Farm'
-            Question: "{request}"
-
-            SQL:
+            You are a library assistant that answers user's request.
+            You have access to tools.
             """;
 
-            var httpClient = _httpClientFactory.CreateClient();
-            // Increase timeout: response from LLM can take more than 100s (default value)
-            httpClient.Timeout = TimeSpan.FromSeconds(300);
-            
-            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, new
+            var aiMessage = await HandleChatWithToolsAsync(systemPrompt, userPrompt);
+            return new AiResponse { Response = aiMessage };
+        }
+
+        private async Task<string> HandleChatWithToolsAsync(string systemPrompt, string userPrompt)
+        {
+            var httpClient = CreateHttpClient();
+
+            var requestBody = new
             {
-                prompt = systemPrompt,
-                max_tokens = _aiSettings.MaxTokens,
-                temperature = _aiSettings.Temperature,
-                stop = new[] { ";" }
-            });
+                model = _aiSettings.Model,
+                messages = new[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt }
+                },
+                tools = _tools
+            };
+
+            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, requestBody);
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Failed to get AI response");
-
-            var content = await response.Content.ReadFromJsonAsync<AiResponse>();
-
-            var sqlQuery = content?.Choices?.FirstOrDefault()?.Text?.Trim();
-
-            if (string.IsNullOrEmpty(sqlQuery))
             {
-                throw new Exception("AI did not return a SQL query");
+                throw new Exception($"Failed to get AI response: {response.StatusCode}");
             }
 
-            // Only allow SELECT statements
-            if (!sqlQuery.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+            var content = await response.Content.ReadFromJsonAsync<AiChatToolResponse>();
+            var message = content?.Choices?.FirstOrDefault()?.Message;
+
+            // If the model wants to call a tool:
+            if (message?.ToolCalls != null && message.ToolCalls.Any())
             {
-                throw new InvalidOperationException("Only SELECT queries are allowed.");
+                return await HandleToolCallsAsync(message.ToolCalls, systemPrompt, userPrompt, message);
             }
 
-            // Sanitize dangerous patterns
-            if (Regex.IsMatch(sqlQuery, @"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE)\b", RegexOptions.IgnoreCase))
-            {
-                throw new InvalidOperationException("Unsafe SQL query detected.");
-            }
-
-            try
-            {
-                var Sqlresult = await _context.Set<T>().FromSqlRaw(sqlQuery).ToListAsync();
-
-                return await GenerateNaturalLanguageResponse(request, Sqlresult);
-            }
-            catch (Exception e)
-            {
-                throw new Exception("SQL execution failed: " + e.Message, e);
-            }
+            return message?.Content?.Trim() ?? "";
         }
 
-        private string GetDatabaseSchema()
+        private async Task<string> SendToolResponseToAi(ToolCall toolCall, AiChatToolMessage message, string systemPrompt, string userPrompt, object toolResult)
         {
-            var schema = new StringBuilder();
+            var httpClient = CreateHttpClient();
 
-            foreach (var entity in _context.Model.GetEntityTypes())
+            var followUpBody = new
             {
-                var tableName = entity.GetTableName();
-                var columns = entity.GetProperties()
-                    .Select(p => $"{p.Name} {MapToSqlType(p.ClrType)}");
+                model = _aiSettings.Model,
+                messages = new object[]
+                {
+                    new { role = "system", content = systemPrompt },
+                    new { role = "user", content = userPrompt },
+                    new { role = "assistant", tool_calls = message.ToolCalls },
+                    new { role = "tool", tool_call_id = toolCall.Id, content = JsonSerializer.Serialize(toolResult) }
+                }
+            };
 
-                schema.AppendLine($"Table: {tableName}({string.Join(", ", columns)})");
-            }
-
-            Console.WriteLine(schema);
-            return schema.ToString();
-        }
-
-        private string MapToSqlType(Type type)
-        {
-            if (type == typeof(int) || type == typeof(long)) return "INTEGER";
-            if (type == typeof(string)) return "TEXT";
-            if (type == typeof(DateTime)) return "DATETIME";
-            if (type == typeof(bool)) return "BOOLEAN";
-            if (type == typeof(float) || type == typeof(double) || type == typeof(decimal)) return "REAL";
-            return "TEXT"; // default fallback
-        }
-
-        private async Task<string> GenerateNaturalLanguageResponse<T>(string request, List<T> sqlresult) where T : class
-        {
-            var systemPrompt = $"""
-            You are an assistant that answers the question based on JSON input
-            Just answer the question and keep it short. Do not include any explanation
-
-            Request: {request}
-
-            JSON input: 
-            {JsonSerializer.Serialize(sqlresult, new JsonSerializerOptions { WriteIndented = true })}
-            """;
-
-            var httpClient = _httpClientFactory.CreateClient();
-            // Increase timeout: response from LLM can take more than 100s (default value)
-            httpClient.Timeout = TimeSpan.FromSeconds(300);
-
-            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, new
-            {
-                prompt = systemPrompt,
-                max_tokens = _aiSettings.MaxTokens,
-                temperature = _aiSettings.Temperature,
-            });
-
+            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, followUpBody);
             if (!response.IsSuccessStatusCode)
-                throw new Exception("Failed to get AI response");
-
-            var content = await response.Content.ReadFromJsonAsync<AiResponse>();
-
-            var answer = content?.Choices?.FirstOrDefault()?.Text?.Trim();
-            if (string.IsNullOrEmpty(answer))
             {
-                throw new Exception("AI did not return a valid answer");
+                throw new Exception($"Failed to get AI response after tool call: {response.StatusCode}");
             }
 
-            return answer;
+            var finalContent = await response.Content.ReadFromJsonAsync<AiChatToolResponse>();
+            return finalContent?.Choices?.FirstOrDefault()?.Message?.Content?.Trim() ?? string.Empty;
+        }
+
+        private async Task<string> HandleToolCallsAsync(List<ToolCall> toolCalls, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        {
+            foreach (var toolCall in toolCalls)
+            {
+                switch (toolCall.Function.Name)
+                {
+                    case "search_books":
+                        return await HandleSearchBooksToolAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+
+                    case "get_all_books":
+                        return await HandleGetAllBooksAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+
+                    default:
+                        throw new NotSupportedException($"Tool '{toolCall.Function.Name}' is not supported.");
+                }
+            }
+
+            return string.Empty;
+        }
+
+
+        private async Task<string> HandleSearchBooksToolAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage message)
+        {
+            var args = JsonSerializer.Deserialize<BookSearch>(toolCall.Function.Arguments);
+
+            if (args == null || (string.IsNullOrWhiteSpace(args.Title) && string.IsNullOrWhiteSpace(args.Author)))
+            {
+                throw new Exception("Invalid arguments for search_books tool");
+            }
+
+            var books = await _bookService.SearchBooksAsync(args);
+            return await SendToolResponseToAi(toolCall, message, systemPrompt, userPrompt, books);
+        }
+
+        private async Task<string> HandleGetAllBooksAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage message)
+        {
+            var books = await _bookService.GetAllBooksAsync();
+            return await SendToolResponseToAi(toolCall, message, systemPrompt, userPrompt, books);
+        }
+
+        private HttpClient CreateHttpClient()
+        {
+            var client = _httpClientFactory.CreateClient();
+            // Increase timeout: response from LLM can take more than 100s (default value)
+            client.Timeout = TimeSpan.FromSeconds(300);
+            return client;
         }
     }
 }
