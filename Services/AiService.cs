@@ -109,6 +109,9 @@ namespace project_backend.Services
                     case "get_book_by_id":
                         return await HandleGetBookByIdAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
 
+                    case "create_book":
+                        return await HandleCreateBookAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+
                     default:
                         throw new NotSupportedException($"Tool '{toolCall.Function.Name}' is not supported.");
                 }
@@ -154,6 +157,20 @@ namespace project_backend.Services
 
             return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, book);
         }
+
+        private async Task<string> HandleCreateBookAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        {
+            var book = JsonSerializer.Deserialize<BookCreateDto>(toolCall.Function.Arguments);
+
+            if (book == null)
+            {
+                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "The book is not valid");
+            }
+
+            var result = await _bookService.CreateBookAsync(book);
+            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, result);
+        }
+
 
         private HttpClient CreateHttpClient()
         {

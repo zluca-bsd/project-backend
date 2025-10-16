@@ -46,5 +46,34 @@
                 "required": ["id"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_book",
+            "description": "Create the book in the database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the book"
+                    },
+                    "author": {
+                        "type": "string",
+                        "description": "The author of the book"
+                    },
+                    "price": {
+                        "type": "float",
+                        "description": "The price of the book. The lowest value is 0"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "The category of the book"
+                    }
+                },
+                "required": ["title", "author", "price", "category"]
+            }
+        }
     }
 ]
