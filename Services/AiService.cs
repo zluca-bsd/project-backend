@@ -106,6 +106,9 @@ namespace project_backend.Services
                     case "get_all_books":
                         return await HandleGetAllBooksAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
 
+                    case "get_book_by_id":
+                        return await HandleGetBookByIdAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+
                     default:
                         throw new NotSupportedException($"Tool '{toolCall.Function.Name}' is not supported.");
                 }
@@ -114,8 +117,7 @@ namespace project_backend.Services
             return string.Empty;
         }
 
-
-        private async Task<string> HandleSearchBooksToolAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage message)
+        private async Task<string> HandleSearchBooksToolAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
         {
             var args = JsonSerializer.Deserialize<BookSearch>(toolCall.Function.Arguments);
 
@@ -125,13 +127,32 @@ namespace project_backend.Services
             }
 
             var books = await _bookService.SearchBooksAsync(args);
-            return await SendToolResponseToAi(toolCall, message, systemPrompt, userPrompt, books);
+            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, books);
         }
 
-        private async Task<string> HandleGetAllBooksAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage message)
+        private async Task<string> HandleGetAllBooksAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
         {
             var books = await _bookService.GetAllBooksAsync();
-            return await SendToolResponseToAi(toolCall, message, systemPrompt, userPrompt, books);
+            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, books);
+        }
+
+        private async Task<string> HandleGetBookByIdAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        {
+            var bookId = JsonSerializer.Deserialize<BookGetByIdDto>(toolCall.Function.Arguments);
+
+            if (bookId == null || !Guid.TryParse(bookId.Id, out Guid result))
+            {
+                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "the book Id is not valid");
+            }
+
+            var book = await _bookService.GetBookByIdAsync(result);
+
+            if (book == null)
+            {
+                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "book is not found");
+            }
+
+            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, book);
         }
 
         private HttpClient CreateHttpClient()

@@ -29,5 +29,22 @@
                 "properties": {}
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_book_by_id",
+            "description": "Retrieve a specific book by its unique identifier (GUID)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The id of the book to retrieve"
+                    }
+                },
+                "required": ["id"]
+            }
+        }
     }
 ]
