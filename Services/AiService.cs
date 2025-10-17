@@ -43,7 +43,9 @@ namespace project_backend.Services
                 new { role = "user", content = userPrompt },
             ];
 
-            var httpClient = CreateHttpClient();
+            var httpClient = _httpClientFactory.CreateClient();
+            // Increase timeout: response from LLM can take more than 100s for complex request (default value)
+            httpClient.Timeout = TimeSpan.FromSeconds(1200);
             string finalAnswer;
 
             // The loop allows multiple round toolcalls
@@ -113,6 +115,10 @@ namespace project_backend.Services
                         toolResult = await HandleUpdateBookAsync(toolCall);
                         break;
 
+                    case "delete_book":
+                        toolResult = await HandleDeleteBookAsync(toolCall);
+                        break;
+
                     default:
                         throw new NotSupportedException($"Tool '{toolCall.Function.Name}' is not supported.");
                 }
@@ -141,9 +147,9 @@ namespace project_backend.Services
 
         private async Task<object> HandleGetBookByIdAsync(ToolCall toolCall)
         {
-            var bookGetByIdDto = JsonSerializer.Deserialize<BookGetByIdDto>(toolCall.Function.Arguments);
+            var bookIdDto = JsonSerializer.Deserialize<BookIdDto>(toolCall.Function.Arguments);
 
-            if (bookGetByIdDto == null || !Guid.TryParse(bookGetByIdDto.Id, out Guid id))
+            if (bookIdDto == null || !Guid.TryParse(bookIdDto.Id, out Guid id))
             {
                 return "the book Id is not valid";
             }
@@ -189,12 +195,18 @@ namespace project_backend.Services
             return result;
         }
 
-        private HttpClient CreateHttpClient()
+        private async Task<object> HandleDeleteBookAsync(ToolCall toolCall)
         {
-            var client = _httpClientFactory.CreateClient();
-            // Increase timeout: response from LLM can take more than 100s (default value)
-            client.Timeout = TimeSpan.FromSeconds(300);
-            return client;
+            var bookIdDto = JsonSerializer.Deserialize<BookIdDto>(toolCall.Function.Arguments);
+
+            if (bookIdDto == null || !Guid.TryParse(bookIdDto.Id, out Guid id))
+            {
+                return "the book Id is not valid";
+            }
+
+            var deleted = await _bookService.DeleteBookAsync(id);
+
+            return deleted ? "Book has been deleted" : "Book not found";
         }
     }
 }

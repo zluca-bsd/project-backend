@@ -43,7 +43,9 @@
                         "description": "The id (GUID) of the book to retrieve. Example: C308DFBA-CD39-4082-BF07-9A611861CAB2"
                     }
                 },
-                "required": ["id"]
+                "required": [
+                    "id"
+                ]
             }
         }
     },
@@ -72,7 +74,12 @@
                         "description": "The category of the book"
                     }
                 },
-                "required": ["title", "author", "price", "category"]
+                "required": [
+                    "title",
+                    "author",
+                    "price",
+                    "category"
+                ]
             }
         }
     },
@@ -105,7 +112,32 @@
                         "description": "The category of the book"
                     }
                 },
-                "required": ["id", "title", "author", "price", "category"]
+                "required": [
+                    "id",
+                    "title",
+                    "author",
+                    "price",
+                    "category"
+                ]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_book",
+            "description": "Delete the book in the database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The id (GUID) of the book to delete. Example: C308DFBA-CD39-4082-BF07-9A611861CAB2"
+                    }
+                },
+                "required": [
+                    "id"
+                ]
             }
         }
     }
