@@ -25,152 +25,169 @@ namespace project_backend.Services
 
         public async Task<AiResponse> AskAi(string userPrompt)
         {
-            var systemPrompt = $"""
-            You are a library assistant that answers user's request.
-            You have access to tools.
+            var systemPrompt = """
+            You are a library assistant that answers user requests.
+            - Do not use general knowledge.
+            - Always use tools for book information.
+            - Use the information provided by tools if present.
+            - If the book exists in the database, trust and return that data.
+            - Do not contradict the database.
+            - Keep your answers clear and factual.
+            - Always elaborate the answer in a human readable format.
+            - Do not include notes.
             """;
 
-            var aiMessage = await HandleChatWithToolsAsync(systemPrompt, userPrompt);
-            return new AiResponse { Response = aiMessage };
-        }
+            List<object> chatHistory =
+            [
+                new { role = "system", content = systemPrompt },
+                new { role = "user", content = userPrompt },
+            ];
 
-        private async Task<string> HandleChatWithToolsAsync(string systemPrompt, string userPrompt)
-        {
             var httpClient = CreateHttpClient();
+            string finalAnswer;
 
-            var requestBody = new
+            // The loop allows multiple round toolcalls
+            while (true)
             {
-                model = _aiSettings.Model,
-                messages = new[]
+                var requestBody = new
                 {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt }
-                },
-                tools = _tools
-            };
+                    model = _aiSettings.Model,
+                    messages = chatHistory,
+                    tools = _tools
+                };
 
-            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, requestBody);
+                var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, requestBody);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Failed to get AI response: {response.StatusCode}");
-            }
-
-            var content = await response.Content.ReadFromJsonAsync<AiChatToolResponse>();
-            var message = content?.Choices?.FirstOrDefault()?.Message;
-
-            // If the model wants to call a tool:
-            if (message?.ToolCalls != null && message.ToolCalls.Any())
-            {
-                return await HandleToolCallsAsync(message.ToolCalls, systemPrompt, userPrompt, message);
-            }
-
-            return message?.Content?.Trim() ?? "";
-        }
-
-        private async Task<string> SendToolResponseToAi(ToolCall toolCall, AiChatToolMessage message, string systemPrompt, string userPrompt, object toolResult)
-        {
-            var httpClient = CreateHttpClient();
-
-            var followUpBody = new
-            {
-                model = _aiSettings.Model,
-                messages = new object[]
+                if (!response.IsSuccessStatusCode)
                 {
-                    new { role = "system", content = systemPrompt },
-                    new { role = "user", content = userPrompt },
-                    new { role = "assistant", tool_calls = message.ToolCalls },
-                    new { role = "tool", tool_call_id = toolCall.Id, content = JsonSerializer.Serialize(toolResult) }
+                    throw new Exception($"Failed to get AI response: {response.StatusCode}");
                 }
-            };
 
-            var response = await httpClient.PostAsJsonAsync(_aiSettings.Endpoint, followUpBody);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Failed to get AI response after tool call: {response.StatusCode}");
+                var content = await response.Content.ReadFromJsonAsync<AiChatToolResponse>();
+                var message = content?.Choices?.FirstOrDefault()?.Message;
+
+                // If the model wants to call a tool:
+                if (message?.ToolCalls != null && message.ToolCalls.Any())
+                {
+                    await HandleToolCallsAsync(message.ToolCalls, chatHistory, message);
+                    // Loop again after executing tool calls
+                    continue;
+                }
+
+                // Otherwise, final message is reached
+                finalAnswer = message?.Content?.Trim() ?? "";
+                break;
             }
 
-            var finalContent = await response.Content.ReadFromJsonAsync<AiChatToolResponse>();
-            return finalContent?.Choices?.FirstOrDefault()?.Message?.Content?.Trim() ?? string.Empty;
+            return new AiResponse { Response = finalAnswer };
         }
 
-        private async Task<string> HandleToolCallsAsync(List<ToolCall> toolCalls, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        private async Task HandleToolCallsAsync(List<ToolCall> toolCalls, List<object> chatHistory, AiChatToolMessage assistantMessage)
         {
+            // Add assistant's tool calls to chat history
+            chatHistory.Add(new { role = "assistant", tool_calls = assistantMessage.ToolCalls });
+
             foreach (var toolCall in toolCalls)
             {
+                object toolResult;
+
                 switch (toolCall.Function.Name)
                 {
                     case "search_books":
-                        return await HandleSearchBooksToolAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+                        toolResult = await HandleSearchBooksToolAsync(toolCall);
+                        break;
 
                     case "get_all_books":
-                        return await HandleGetAllBooksAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+                        toolResult = await HandleGetAllBooksAsync();
+                        break;
 
                     case "get_book_by_id":
-                        return await HandleGetBookByIdAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+                        toolResult = await HandleGetBookByIdAsync(toolCall);
+                        break;
 
                     case "create_book":
-                        return await HandleCreateBookAsync(toolCall, systemPrompt, userPrompt, assistantMessage);
+                        toolResult = await HandleCreateBookAsync(toolCall);
+                        break;
+
+                    case "update_book":
+                        toolResult = await HandleUpdateBookAsync(toolCall);
+                        break;
 
                     default:
                         throw new NotSupportedException($"Tool '{toolCall.Function.Name}' is not supported.");
                 }
-            }
 
-            return string.Empty;
+                // Add the tool response to chat history for each tool call
+                chatHistory.Add(new { role = "tool", tool_call_id = toolCall.Id, content = JsonSerializer.Serialize(toolResult) });
+            }
         }
 
-        private async Task<string> HandleSearchBooksToolAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        private async Task<object> HandleSearchBooksToolAsync(ToolCall toolCall)
         {
             var args = JsonSerializer.Deserialize<BookSearch>(toolCall.Function.Arguments);
 
             if (args == null || (string.IsNullOrWhiteSpace(args.Title) && string.IsNullOrWhiteSpace(args.Author)))
             {
-                throw new Exception("Invalid arguments for search_books tool");
+                return "Invalid arguments for search_books tool";
             }
 
-            var books = await _bookService.SearchBooksAsync(args);
-            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, books);
+            return await _bookService.SearchBooksAsync(args);
         }
 
-        private async Task<string> HandleGetAllBooksAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        private async Task<object> HandleGetAllBooksAsync()
         {
-            var books = await _bookService.GetAllBooksAsync();
-            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, books);
+            return await _bookService.GetAllBooksAsync();
         }
 
-        private async Task<string> HandleGetBookByIdAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        private async Task<object> HandleGetBookByIdAsync(ToolCall toolCall)
         {
-            var bookId = JsonSerializer.Deserialize<BookGetByIdDto>(toolCall.Function.Arguments);
+            var bookGetByIdDto = JsonSerializer.Deserialize<BookGetByIdDto>(toolCall.Function.Arguments);
 
-            if (bookId == null || !Guid.TryParse(bookId.Id, out Guid result))
+            if (bookGetByIdDto == null || !Guid.TryParse(bookGetByIdDto.Id, out Guid id))
             {
-                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "the book Id is not valid");
+                return "the book Id is not valid";
             }
 
-            var book = await _bookService.GetBookByIdAsync(result);
+            var book = await _bookService.GetBookByIdAsync(id);
 
             if (book == null)
             {
-                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "book is not found");
+                return "book is not found";
             }
 
-            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, book);
+            return book;
         }
 
-        private async Task<string> HandleCreateBookAsync(ToolCall toolCall, string systemPrompt, string userPrompt, AiChatToolMessage assistantMessage)
+        private async Task<object> HandleCreateBookAsync(ToolCall toolCall)
         {
             var book = JsonSerializer.Deserialize<BookCreateDto>(toolCall.Function.Arguments);
 
             if (book == null)
             {
-                return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, "The book is not valid");
+                return "The book is not valid";
             }
 
-            var result = await _bookService.CreateBookAsync(book);
-            return await SendToolResponseToAi(toolCall, assistantMessage, systemPrompt, userPrompt, result);
+            return await _bookService.CreateBookAsync(book);
         }
 
+        private async Task<object> HandleUpdateBookAsync(ToolCall toolCall)
+        {
+            var book = JsonSerializer.Deserialize<BookUpdateDto>(toolCall.Function.Arguments);
+
+            if (book == null)
+            {
+                return "The book is not valid";
+            }
+
+            var result = await _bookService.UpdateBookAsync(book.Id, book);
+
+            if (result == null)
+            {
+                return "The book is not valid";
+            }
+
+            return result;
+        }
 
         private HttpClient CreateHttpClient()
         {

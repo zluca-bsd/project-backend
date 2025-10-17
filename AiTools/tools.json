@@ -34,13 +34,13 @@
         "type": "function",
         "function": {
             "name": "get_book_by_id",
-            "description": "Retrieve a specific book by its unique identifier (GUID)",
+            "description": "Retrieve a specific book by its unique identifier (GUID).",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "The id of the book to retrieve"
+                        "description": "The id (GUID) of the book to retrieve. Example: C308DFBA-CD39-4082-BF07-9A611861CAB2"
                     }
                 },
                 "required": ["id"]
@@ -73,6 +73,39 @@
                     }
                 },
                 "required": ["title", "author", "price", "category"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_book",
+            "description": "Update the book in the database",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The id (GUID) of the book to update. Example: C308DFBA-CD39-4082-BF07-9A611861CAB2"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the book"
+                    },
+                    "author": {
+                        "type": "string",
+                        "description": "The author of the book"
+                    },
+                    "price": {
+                        "type": "float",
+                        "description": "The price of the book. The lowest value is 0"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "The category of the book"
+                    }
+                },
+                "required": ["id", "title", "author", "price", "category"]
             }
         }
     }
